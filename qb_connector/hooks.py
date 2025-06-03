@@ -5,6 +5,12 @@ app_description = "This app will connect to Quickbooks Online and will make Invo
 app_email = "danielwhaleygcc@gmail.com"
 app_license = "mit"
 
+fixtures = [
+    {"doctype": "Custom Field", "filters": [["dt", "in", ["QuickBooks Settings"]]]},
+    {"doctype": "Property Setter", "filters": [["doc_type", "=", "QuickBooks Settings"]]},
+    "QuickBooks Settings"
+]
+
 # Apps
 # ------------------
 
