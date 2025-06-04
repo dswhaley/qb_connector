@@ -15,7 +15,11 @@ fixtures = [
     # This line includes the actual records in QuickBooks Settings (optional)
     "QuickBooks Settings"
 ]
-
+scheduler_events = {
+    "hourly": [
+        "qb_connector.api.refresh_qbo_token"
+    ]
+}
 override_whitelisted_methods = {
     "qb_connector.api.handle_qbo_callback": "qb_connector.api.handle_qbo_callback"
 }

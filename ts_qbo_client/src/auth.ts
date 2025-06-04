@@ -75,7 +75,10 @@ export class QuickBooksAuth {
    * Refreshes the QuickBooks access token.
    */
   async refreshToken(): Promise<void> {
+    const ts = new Date().toISOString();
+    const startGetDoc = Date.now();
     const raw = await frappe.getDoc<QuickBooksSettings>('QuickBooks Settings');
+    console.log(`[${ts}] getDoc took ${Date.now() - startGetDoc}ms`);
     const settings = fromFrappe(raw);
 
     if (!settings.refreshToken) {
@@ -83,6 +86,7 @@ export class QuickBooksAuth {
     }
 
     try {
+      const startRefresh = Date.now();
       const tokenResponse = await this.authClient.refreshUsingToken(settings.refreshToken);
       const token = tokenResponse.getToken();
 
@@ -93,10 +97,10 @@ export class QuickBooksAuth {
       settings.accessToken = token.access_token;
       settings.refreshToken = token.refresh_token;
 
+      const startUpdate = Date.now();
       await frappe.updateDoc('QuickBooks Settings', toFrappe(settings));
-      console.log('🔄 Token refreshed');
     } catch (error: any) {
-      console.error('Token refresh failed:', error);
+      console.error(`[${ts}] Token refresh failed:`, error.message, error.stack, error.response?.data);
       throw new Error(`Refresh token failed: ${error.message}`);
     }
   }

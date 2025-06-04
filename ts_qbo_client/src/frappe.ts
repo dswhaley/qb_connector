@@ -45,7 +45,7 @@ export const frappe = {
    */
   async updateDoc(doctype: string, doc: any): Promise<void> {
     const url = `${baseUrl}/api/resource/${doctype}/${doc.name}`;
-    await axios.put(url, doc, axiosConfig());
+    const response = await axios.put(url, doc, axiosConfig());
   },
 
   /**

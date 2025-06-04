@@ -5,6 +5,7 @@ import { frappe } from './frappe';
 import { QuickBooksSettings } from './types';
 import { fromFrappe, toFrappe } from './mappers';
 import cron from 'node-cron';
+import axios from 'axios';
 
 dotenv.config();
 
@@ -37,8 +38,10 @@ app.get('/auth/qbo/callback', async (req: Request, res: Response): Promise<void>
   try {
     const settings = await frappe.getDoc<QuickBooksSettings>('QuickBooks Settings');
     const qbo = new QuickBooksAuth(settings);
+    const start = Date.now();
     await qbo.handleCallback(code, realmId, state);
     res.send('QuickBooks connected successfully!');
+  
   } catch (error) {
     console.error('Callback error:', error);
     res.status(500).send('Failed to connect to QuickBooks.');
@@ -47,18 +50,4 @@ app.get('/auth/qbo/callback', async (req: Request, res: Response): Promise<void>
 
 app.listen(port, () => {
   console.log(`QBO integration server running at http://localhost:${port}`);
-});
-
-cron.schedule('0 * * * *', async () => {
-  console.log('🔁 Running hourly QBO token refresh...');
-
-    try {
-    const raw = await frappe.getDoc<QuickBooksSettings>('QuickBooks Settings');
-    const settings = fromFrappe(raw);
-    const qbo = new QuickBooksAuth(settings);
-    await qbo.refreshToken();
-    console.log('✅ Token refreshed successfully');
-  } catch (err) {
-    console.error('❌ Token refresh failed:', err);
-  }
 });
