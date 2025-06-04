@@ -6,11 +6,19 @@ app_email = "danielwhaleygcc@gmail.com"
 app_license = "mit"
 
 fixtures = [
-    {"doctype": "Custom Field", "filters": [["dt", "in", ["QuickBooks Settings"]]]},
+    # This line is not needed unless you created Custom Fields for other doctypes
+    # {"doctype": "Custom Field", "filters": [["dt", "in", ["QuickBooks Settings"]]]},
+
+    # This line is critical — it captures any schema override to field lengths etc.
     {"doctype": "Property Setter", "filters": [["doc_type", "=", "QuickBooks Settings"]]},
+
+    # This line includes the actual records in QuickBooks Settings (optional)
     "QuickBooks Settings"
 ]
 
+override_whitelisted_methods = {
+    "qb_connector.api.handle_qbo_callback": "qb_connector.api.handle_qbo_callback"
+}
 # Apps
 # ------------------
 

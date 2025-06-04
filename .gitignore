@@ -22,7 +22,7 @@ wheels/
 *.egg
 tags
 MANIFEST
-
+node_modules/
 # Environments
 .env
 .venv
