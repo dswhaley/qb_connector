@@ -25,7 +25,7 @@ def handle_qbo_callback(code=None, realmId=None):
         frappe.throw(_("Failed to handle QuickBooks callback."))
 
 def refresh_qbo_token():
-
+    frappe.logger().info("🔄 Scheduler: Running refresh_qbo_token")
     try:
         settings_name = frappe.db.get_value("QuickBooks Settings", {}, "name")
         if not settings_name:
@@ -64,7 +64,9 @@ def refresh_qbo_token():
             print("Token Refresh Successfull")
         else:
             print(f"❌ Failed to refresh token. Response: {response.status_code} - {response.text}")
-
+        frappe.logger().info("✅ Scheduler: Token refreshed successfully")
     except Exception as e:
         print(f"🔥 Exception occurred: {e}")
         frappe.log_error(frappe.get_traceback(), "QBO Token Refresh Error")
+def test_scheduler_job():
+    frappe.logger().info("✅ test_scheduler_job executed successfully")

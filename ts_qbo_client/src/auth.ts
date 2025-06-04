@@ -1,17 +1,21 @@
 import IntuitOAuth from 'intuit-oauth';
 import { frappe } from './frappe';
 import { QuickBooksSettings } from './types';
-import { fromFrappe, toFrappe } from './mappers';
+import { fromFrappe, toFrappe } from './sync/mappers'; 
 import { v4 as uuidv4 } from 'uuid';
+import dotenv from 'dotenv';
+dotenv.config();
 
 export class QuickBooksAuth {
   private authClient: IntuitOAuth;
 
   constructor(settings: QuickBooksSettings) {
+    const environment = process.env.QBO_ENV || 'sandbox';
+
     this.authClient = new IntuitOAuth({
       clientId: settings.clientId,
       clientSecret: settings.clientSecret,
-      environment: 'sandbox',
+      environment: environment as 'sandbox' | 'production',
       redirectUri: settings.redirectUri
     });
   }

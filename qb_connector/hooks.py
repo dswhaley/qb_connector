@@ -5,6 +5,7 @@ app_description = "This app will connect to Quickbooks Online and will make Invo
 app_email = "danielwhaleygcc@gmail.com"
 app_license = "mit"
 
+
 fixtures = [
     # This line is not needed unless you created Custom Fields for other doctypes
     # {"doctype": "Custom Field", "filters": [["dt", "in", ["QuickBooks Settings"]]]},
@@ -13,7 +14,14 @@ fixtures = [
     {"doctype": "Property Setter", "filters": [["doc_type", "=", "QuickBooks Settings"]]},
 
     # This line includes the actual records in QuickBooks Settings (optional)
-    "QuickBooks Settings"
+    {
+        "doctype": "Custom Field",
+        "filters": [["dt", "=", "Customer"]]
+    },
+    {
+        "doctype": "Property Setter",
+        "filters": [["doc_type", "=", "Customer"]]
+    }
 ]
 scheduler_events = {
     "hourly": [

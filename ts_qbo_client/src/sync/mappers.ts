@@ -1,5 +1,5 @@
 // mappers.ts
-import { QuickBooksSettings } from './types';
+import { QuickBooksSettings } from '../types';
 
 export function fromFrappe(raw: any): QuickBooksSettings {
   const result = {

@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import { QuickBooksAuth } from './auth';
 import { frappe } from './frappe';
 import { QuickBooksSettings } from './types';
-import { fromFrappe, toFrappe } from './mappers';
+import { fromFrappe, toFrappe } from './sync/mappers'; 
 import cron from 'node-cron';
 import axios from 'axios';
 
