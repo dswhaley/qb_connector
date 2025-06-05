@@ -11,7 +11,7 @@ interface Customer {
   custom_qbo_customer_id?: string;
   custom_qbo_sync_status?: string;
   custom_qbo_last_synced_at?: string;
-  custom_customer_exists_in_qbo?: number; // 1 for true, 0 for false
+  custom_customer_exists_in_qbo?: number;
   custom_billing_address?: string;
 }
 
@@ -36,13 +36,12 @@ function toMariaDBDateTimeString(date: Date): string {
   return date.toISOString().slice(0, 19).replace('T', ' ');
 }
 
-export async function syncCustomerToQbo(customerName: string): Promise<void> {
+export async function syncCustomerToQbo(customerName: string): Promise<'matched' | 'not_found'> {
   const customer = await frappe.getDoc<Customer>('Customer', customerName);
 
-  // Skip if already synced
   if (customer.custom_qbo_customer_id && customer.custom_qbo_sync_status === 'Synced') {
     console.log(`✅ Customer ${customer.name} is already synced to QBO.`);
-    return;
+    return 'matched';
   }
 
   const rawSettings = await frappe.getDoc<any>('QuickBooks Settings');
@@ -60,7 +59,6 @@ export async function syncCustomerToQbo(customerName: string): Promise<void> {
   };
 
   try {
-    // Try matching by DisplayName
     const safeName = customer.customer_name?.replace(/'/g, "\\'");
     const nameQuery = `select * from Customer where DisplayName = '${safeName}'`;
 
@@ -71,7 +69,6 @@ export async function syncCustomerToQbo(customerName: string): Promise<void> {
 
     let match = nameResp.data.QueryResponse.Customer?.[0];
 
-    // Fallback to billing address
     if (!match && customer.custom_billing_address) {
       const fullQuery = `select * from Customer`;
       const fullResp = await axios.get<QboCustomerQueryResponse>(
@@ -110,8 +107,10 @@ export async function syncCustomerToQbo(customerName: string): Promise<void> {
 
       await frappe.updateDoc('Customer', customer);
       console.log(`✅ Linked ${customer.name} to QBO Customer ID ${match.Id}`);
+      return 'matched';
     } else {
       console.log(`🔍 No matching QBO customer found for ${customer.name}`);
+      return 'not_found';
     }
   } catch (error: any) {
     console.error(`❌ Failed to sync customer ${customer.name}:`, error.response?.data || error.message);
@@ -125,7 +124,6 @@ export async function syncCustomerToQbo(customerName: string): Promise<void> {
   }
 }
 
-// CLI usage: ts-node src/syncCustomerToQbo.ts "Customer Name"
 if (require.main === module) {
   const name = process.argv[2];
   if (!name) {
@@ -134,6 +132,6 @@ if (require.main === module) {
   }
 
   syncCustomerToQbo(name)
-    .then(() => console.log('✅ Sync complete'))
+    .then((res) => console.log(`Result: ${res}`))
     .catch((err) => console.error('❌ Sync failed:', err));
 }
