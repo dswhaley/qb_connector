@@ -1,6 +1,6 @@
 ### Qb Connector
 
-This app will connect to Quickbooks Online and will make Invoices in QB when an invoice is creatERPnext
+This app will connect to Quickbooks Online and will make Invoices in QB when an invoice is created in ERPnext
 
 ### Installation
 
