@@ -31,6 +31,12 @@ scheduler_events = {
 override_whitelisted_methods = {
     "qb_connector.api.handle_qbo_callback": "qb_connector.api.handle_qbo_callback"
 }
+
+doc_events = {
+    "Customer": {
+        "on_update": "qb_connector.api.customer_update_handler"
+    }
+}
 # Apps
 # ------------------
 

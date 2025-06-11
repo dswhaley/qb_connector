@@ -70,3 +70,24 @@ def refresh_qbo_token():
         frappe.log_error(frappe.get_traceback(), "QBO Token Refresh Error")
 def test_scheduler_job():
     frappe.logger().info("✅ test_scheduler_job executed successfully")
+
+
+def customer_update_handler(doc, method):
+    if (
+        doc.custom_create_customer_in_qbo == 1 and
+        doc.custom_qbo_sync_status != "Synced" and
+        doc.custom_camp_link
+    ):
+        try:
+            requests.post(
+                "http://localhost:3000/api/handle-customer-create",
+                json={"customer_name": doc.name},
+                timeout=5
+            )
+        except Exception as e:
+            frappe.log_error(f"Failed to trigger QBO creation: {e}", "QBO Sync Error")
+    elif doc.custom_create_customer_in_qbo == 1 and not doc.custom_camp_link:
+        # Use DB write to avoid save loop
+        frappe.db.set_value("Customer", doc.name, "custom_qbo_sync_status", "Missing Camp Link")
+    else:
+        frappe.db.set_value("Customer", doc.name, "custom_create_customer_in_qbo", 0)

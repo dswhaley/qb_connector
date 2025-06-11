@@ -1,3 +1,4 @@
+//auth.ts
 import IntuitOAuth from 'intuit-oauth';
 import { frappe } from './frappe';
 import { QuickBooksSettings } from './types';
