@@ -88,3 +88,4 @@ def run_qbo_script(script_name: str, item_name: str, new_value: str) -> bool:
         print(f"❌ Exception: {e}")
         frappe.logger().error(f"❌ Failed to run script {script_name}: {str(e)}")
         return False
+

@@ -49,6 +49,9 @@ doc_events = {
     },
     "Item Price": {
         "before_save": "qb_connector.qbo_hooks.sync_qbo_price_on_update"
+    },
+    "Sales Invoice": {
+        "on_submit": "qb_connector.invoice_hooks.sync_sales_invoice_to_qbo"
     }
 }
 # Apps

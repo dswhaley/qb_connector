@@ -62,23 +62,29 @@ export const frappe = {
     const response = await axios.get(url, axiosConfig());
     return (response.data as { data: T[] }).data;
   },
+
   async getAllFiltered<T = any>(
     doctype: string,
-    options?: { filters?: Record<string, any>; fields?: string[] }
+    options?: { filters?: Record<string, any>; fields?: string[]; limit?: number }
   ): Promise<T[]> {
     const url = new URL(`${baseUrl}/api/resource/${doctype}`);
 
     if (options?.filters) {
-      url.searchParams.set('filters', JSON.stringify(options.filters));
+      url.searchParams.set("filters", JSON.stringify(options.filters));
     }
 
     if (options?.fields) {
-      url.searchParams.set('fields', JSON.stringify(options.fields));
+      url.searchParams.set("fields", JSON.stringify(options.fields));
+    }
+
+    if (options?.limit) {
+      url.searchParams.set("limit_page_length", options.limit.toString());
     }
 
     const response = await axios.get(url.toString(), axiosConfig());
     return (response.data as { data: T[] }).data;
-}, 
+}
+, 
 createDoc: async <T = any>(doctype: string, doc: Partial<T>): Promise<T> => {
   const url = `${baseUrl}/api/resource/${doctype}`;
   const response = await axios.post(url, doc, axiosConfig());
