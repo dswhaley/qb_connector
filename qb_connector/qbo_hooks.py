@@ -34,7 +34,6 @@ def sync_qbo_price_on_update(doc, method):
         if doc.price_list_rate != doc._original.price_list_rate:
             item = frappe.get_doc("Item", doc.item_code)
             if item.custom_qbo_item_id:
-                frappe.logger().info(f"🔁 Detected price change for Item Price {doc.name}")
                 success = run_qbo_script("updateQboPrice.ts", item.name, str(doc.price_list_rate))
 
                 status = "Synced" if success else "Failed"
@@ -43,10 +42,6 @@ def sync_qbo_price_on_update(doc, method):
                             doctype=item.doctype,
                             docname=item.name,
                             status=status)
-
-                print(f"📨 Enqueuing sync status update for {doc.doctype} {doc.name} → {status}")
-                frappe.logger().info(f"📨 Enqueuing sync status update for {doc.doctype} {doc.name} → {status}")
-
     except Exception as e:
         frappe.logger().error(f"❌ Price sync failed for Item Price {doc.name}: {str(e)}")
 
@@ -54,11 +49,9 @@ def sync_qbo_price_on_update(doc, method):
 def mark_qbo_sync_status(doctype: str, docname: str, status: str):
     """Set last_synced and sync_status after QBO update."""
     try:
-        print(f"✅ mark_qbo_sync_status running for {doctype} {docname} → {status}")
         doc = frappe.get_doc(doctype, docname)
         doc.db_set("custom_last_synced_at", now_datetime())
         doc.db_set("custom_sync_status", status)
-        frappe.logger().info(f"✅ Set sync status for {doctype} {docname} to {status}")
     except Exception as e:
         frappe.logger().error(f"❌ Failed to update sync status for {doctype} {docname}: {str(e)}")
         print(f"❌ Error in mark_qbo_sync_status: {e}")
@@ -80,22 +73,16 @@ def run_qbo_script(script_name: str, item_name: str, new_value: str) -> bool:
             cwd=script_dir
         )
 
-        while True:
-            output = process.stdout.readline()
-            if output:
-                print(f"📤 {output.strip()}")
-                frappe.logger().info(f"[QBO Script Output] {output.strip()}")
-            elif process.poll() is not None:
-                break
+        process.wait()  # ✅ wait for completion before checking exit code
 
         stderr = process.stderr.read()
         if stderr:
             print(f"❗ STDERR:\n{stderr}")
             frappe.logger().error(f"[QBO Script Error] {stderr}")
+
         return_code = process.returncode
-        print(f"📦 Script exit code: {return_code}")
-        frappe.logger().info(f"📦 Script exit code: {return_code}")
-        return process.returncode == 0
+        print(f"📦 Script exited with code {return_code}")
+        return return_code == 0
 
     except Exception as e:
         print(f"❌ Exception: {e}")
