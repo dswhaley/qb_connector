@@ -3,9 +3,13 @@
 import axios from 'axios';
 import http from 'http';
 import dotenv from 'dotenv';
+import path from 'path';
+
 
 // Load environment variables from .env
 dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../.env') }); // ✅ Load env vars
+
 
 const baseUrl = process.env.FRAPPE_SITE_URL || 'http://localhost:8008';
 const token = process.env.FRAPPE_API_TOKEN || '';
@@ -29,6 +33,7 @@ export const frappe = {
    * If no name is provided, and multiple documents exist, returns the first.
    */
   async getDoc<T>(doctype: string, name?: string): Promise<T> {
+
     if (!name) {
       const records = await frappe.getAll<{ name: string }>(doctype);
       if (!records.length) throw new Error(`No records found for ${doctype}`);

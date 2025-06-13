@@ -2,6 +2,7 @@ import axios from 'axios';
 import { frappe } from './frappe';
 import { fromFrappe } from './sync/mappers';
 import { QuickBooksSettings } from './types';
+import { getQboBaseUrl } from './auth';
 import dayjs from 'dayjs';
 
 interface QboCreateCustomerResponse {
@@ -21,6 +22,7 @@ export async function createCustomerInQbo(customerName: string): Promise<void> {
   const rawSettings = await frappe.getDoc('QuickBooks Settings');
   const settings: QuickBooksSettings = fromFrappe(rawSettings);
 
+  const baseUrl = await getQboBaseUrl(); // ✅ uses QBO_ENV
 
   if (!isFilled(customer.customer_name)) {
     throw new Error(`❌ Cannot create QBO customer without a customer_name`);
@@ -32,21 +34,21 @@ export async function createCustomerInQbo(customerName: string): Promise<void> {
 
   const missing: string[] = [];
 
-  // Email check
+  // ✅ Email
   if (isFilled(customer.custom_email)) {
     qboCustomer.PrimaryEmailAddr = { Address: customer.custom_email.trim() };
   } else {
     missing.push('Email');
   }
 
-  // Phone check
+  // ✅ Phone
   if (isFilled(customer.custom_phone)) {
     qboCustomer.PrimaryPhone = { FreeFormNumber: customer.custom_phone.trim() };
   } else {
     missing.push('Phone');
   }
 
-  // Address check
+  // ✅ Billing Address
   if (isFilled(customer.custom_billing_address)) {
     const parts = customer.custom_billing_address.split(',').map((p: string) => p.trim());
     if (parts.length >= 4 && parts.every(isFilled)) {
@@ -64,7 +66,7 @@ export async function createCustomerInQbo(customerName: string): Promise<void> {
     missing.push('Address');
   }
 
-  // Decide sync status
+  // ✅ Sync Status
   let syncStatus = 'Synced';
   if (missing.length === 1) {
     syncStatus = `Missing ${missing[0]}`;
@@ -72,23 +74,21 @@ export async function createCustomerInQbo(customerName: string): Promise<void> {
     syncStatus = 'Missing Multiple Fields';
   }
 
-
-  // Abort QBO creation if anything is missing
   if (syncStatus !== 'Synced') {
     await frappe.updateDoc('Customer', {
       name: customer.name,
       custom_qbo_sync_status: syncStatus,
-      custom_create_customer_in_qbo: 0
+      custom_create_customer_in_qbo: 0,
     });
 
     console.warn(`⚠️ Skipped QBO creation for ${customer.customer_name}: ${syncStatus}`);
     return;
   }
 
-  // QBO customer creation
+  // ✅ POST to QBO
   try {
     const response = await axios.post<QboCreateCustomerResponse>(
-      `https://sandbox-quickbooks.api.intuit.com/v3/company/${settings.realmId}/customer`,
+      `${baseUrl}/${settings.realmId}/customer`,
       qboCustomer,
       {
         headers: {
@@ -109,9 +109,9 @@ export async function createCustomerInQbo(customerName: string): Promise<void> {
       name: customer.name,
       custom_qbo_customer_id: created.Id,
       custom_qbo_sync_status: 'Synced',
-      custom_qbo_last_synced_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+      custom_last_synced_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
       custom_customer_exists_in_qbo: 1,
-      custom_create_customer_in_qbo: 0
+      custom_create_customer_in_qbo: 0,
     });
 
     console.log(`✅ Created QBO customer '${customer.customer_name}' with ID ${created.Id}`);

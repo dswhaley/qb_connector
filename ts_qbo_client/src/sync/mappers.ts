@@ -9,7 +9,8 @@ export function fromFrappe(raw: any): QuickBooksSettings {
     accessToken: raw.accesstoken,
     refreshToken: raw.refreshtoken,
     realmId: raw.realmid,
-    redirectUri: raw.redirecturi
+    redirectUri: raw.redirecturi,
+    last_refresh: raw.last_refresh
   };
   return result;
 }
@@ -21,6 +22,7 @@ export function toFrappe(settings: QuickBooksSettings): any {
     accesstoken: settings.accessToken,
     refreshtoken: settings.refreshToken,
     realmid: settings.realmId,
-    redirecturi: settings.redirectUri
+    redirecturi: settings.redirectUri,
+    last_refresh: settings.last_refresh
   };
 }

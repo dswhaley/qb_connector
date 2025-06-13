@@ -7,4 +7,5 @@ export interface QuickBooksSettings {
   refreshToken?: string;
   realmId?: string;
   redirectUri: string;
+  last_refresh: string
 }

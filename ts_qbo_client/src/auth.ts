@@ -1,11 +1,17 @@
-//auth.ts
+// src/auth.ts
+
 import IntuitOAuth from 'intuit-oauth';
 import { frappe } from './frappe';
 import { QuickBooksSettings } from './types';
 import { fromFrappe, toFrappe } from './sync/mappers'; 
 import { v4 as uuidv4 } from 'uuid';
 import dotenv from 'dotenv';
+import dayjs from 'dayjs';
+
 dotenv.config();
+
+// Expected .env entries:
+// QBO_ENV=sandbox | production
 
 export class QuickBooksAuth {
   private authClient: IntuitOAuth;
@@ -42,8 +48,9 @@ export class QuickBooksAuth {
       this.authClient = new IntuitOAuth({
         clientId: settings.clientId,
         clientSecret: settings.clientSecret,
-        environment: 'sandbox',
+        environment: (process.env.QBO_ENV || 'sandbox') as 'sandbox' | 'production', // ✅ fixed here
         redirectUri: settings.redirectUri
+
       });
 
       if (!code || !realmId) {
@@ -63,11 +70,8 @@ export class QuickBooksAuth {
       settings.accessToken = token.access_token;
       settings.refreshToken = token.refresh_token;
       settings.realmId = realmId;
+      settings.last_refresh = dayjs().format('YYYY-MM-DD HH:mm:ss');
 
-
-
-
-      
       await frappe.updateDoc('QuickBooks Settings', toFrappe(settings));
    
     } catch (error: any) {
@@ -101,6 +105,7 @@ export class QuickBooksAuth {
 
       settings.accessToken = token.access_token;
       settings.refreshToken = token.refresh_token;
+      settings.last_refresh = dayjs().format('YYYY-MM-DD HH:mm:ss');
 
       const startUpdate = Date.now();
       await frappe.updateDoc('QuickBooks Settings', toFrappe(settings));
@@ -109,4 +114,47 @@ export class QuickBooksAuth {
       throw new Error(`Refresh token failed: ${error.message}`);
     }
   }
+}
+
+/**
+ * Returns QBO request headers with auth token
+ */
+export async function getQboAuthHeaders(): Promise<{
+  Authorization: string;
+  Accept: string;
+  'Content-Type': string;
+}> {
+  const rawSettings = await frappe.getDoc('QuickBooks Settings');
+  const settings: QuickBooksSettings = fromFrappe(rawSettings);
+
+  if (!settings.accessToken) {
+    throw new Error('❌ No QBO access token found in QuickBooks Settings');
+  }
+  console.log("🔑 Using access token:", settings.accessToken?.slice(0, 30) + '...');
+  console.log("📄 Loaded settings doc:", settings.name);
+
+  return {
+    Authorization: `Bearer ${settings.accessToken}`,
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  };
+}
+
+/**
+ * Returns correct QBO API base URL based on environment
+ */
+export async function getQboBaseUrl(): Promise<string> {
+  const rawSettings = await frappe.getDoc('QuickBooks Settings');
+  const settings: QuickBooksSettings = fromFrappe(rawSettings);
+
+  if (!settings.realmId) {
+    throw new Error('❌ Missing realmId in QuickBooks Settings');
+  }
+
+  const env = process.env.QBO_ENV?.toLowerCase();
+  const base = env === 'production'
+    ? 'https://quickbooks.api.intuit.com/v3/company'
+    : 'https://sandbox-quickbooks.api.intuit.com/v3/company';
+
+  return `${base}/${settings.realmId}`;
 }
