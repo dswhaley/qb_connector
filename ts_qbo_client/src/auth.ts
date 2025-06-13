@@ -130,8 +130,6 @@ export async function getQboAuthHeaders(): Promise<{
   if (!settings.accessToken) {
     throw new Error('❌ No QBO access token found in QuickBooks Settings');
   }
-  console.log("🔑 Using access token:", settings.accessToken?.slice(0, 30) + '...');
-  console.log("📄 Loaded settings doc:", settings.name);
 
   return {
     Authorization: `Bearer ${settings.accessToken}`,

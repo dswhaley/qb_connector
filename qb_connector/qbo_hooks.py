@@ -3,25 +3,81 @@ import subprocess
 import os
 from frappe.utils import now_datetime
 
-def run_qbo_script(script_name: str, item_name: str, new_value: str):
+
+def sync_qbo_cost_on_update(doc, method):
     try:
-        # Start from this Python file's location (qb_connector/api/qbo_hooks.py or similar)
+        if not hasattr(doc, "_original"):
+            doc._original = frappe.get_doc(doc.doctype, doc.name)
+
+        if doc.valuation_rate != doc._original.valuation_rate and doc.custom_qbo_item_id:
+            frappe.logger().info(f"🔁 Detected valuation_rate change for Item {doc.name}")
+            success = run_qbo_script("updateQboCost.ts", doc.name, str(doc.valuation_rate))
+
+            status = "Synced" if success else "Failed"
+            print(f"Status: {status}")
+            frappe.enqueue("qb_connector.qbo_hooks.mark_qbo_sync_status",
+                doctype=doc.doctype,
+                docname=doc.name,
+                status=status)
+            print(f"📨 Enqueuing sync status update for {doc.doctype} {doc.name} → {status}")
+            frappe.logger().info(f"📨 Enqueuing sync status update for {doc.doctype} {doc.name} → {status}")
+
+    except Exception as e:
+        frappe.logger().error(f"❌ Cost sync failed for Item {doc.name}: {str(e)}")
+
+
+def sync_qbo_price_on_update(doc, method):
+    try:
+        if not hasattr(doc, "_original"):
+            doc._original = frappe.get_doc(doc.doctype, doc.name)
+
+        if doc.price_list_rate != doc._original.price_list_rate:
+            item = frappe.get_doc("Item", doc.item_code)
+            if item.custom_qbo_item_id:
+                frappe.logger().info(f"🔁 Detected price change for Item Price {doc.name}")
+                success = run_qbo_script("updateQboPrice.ts", item.name, str(doc.price_list_rate))
+
+                status = "Synced" if success else "Failed"
+                print(f"Status: {status}")
+                frappe.enqueue("qb_connector.qbo_hooks.mark_qbo_sync_status",
+                            doctype=item.doctype,
+                            docname=item.name,
+                            status=status)
+
+                print(f"📨 Enqueuing sync status update for {doc.doctype} {doc.name} → {status}")
+                frappe.logger().info(f"📨 Enqueuing sync status update for {doc.doctype} {doc.name} → {status}")
+
+    except Exception as e:
+        frappe.logger().error(f"❌ Price sync failed for Item Price {doc.name}: {str(e)}")
+
+
+def mark_qbo_sync_status(doctype: str, docname: str, status: str):
+    """Set last_synced and sync_status after QBO update."""
+    try:
+        print(f"✅ mark_qbo_sync_status running for {doctype} {docname} → {status}")
+        doc = frappe.get_doc(doctype, docname)
+        doc.db_set("custom_last_synced_at", now_datetime())
+        doc.db_set("custom_sync_status", status)
+        frappe.logger().info(f"✅ Set sync status for {doctype} {docname} to {status}")
+    except Exception as e:
+        frappe.logger().error(f"❌ Failed to update sync status for {doctype} {docname}: {str(e)}")
+        print(f"❌ Error in mark_qbo_sync_status: {e}")
+
+
+def run_qbo_script(script_name: str, item_name: str, new_value: str) -> bool:
+    """Run a TypeScript script via subprocess and return True on success."""
+    try:
         current_dir = os.path.dirname(os.path.abspath(__file__))
-
-        # Go up to the `qb_connector` app root
         app_root = os.path.abspath(os.path.join(current_dir, ".."))
-
-        # Then to the ts_qbo_client/src directory
         script_dir = os.path.join(app_root, "ts_qbo_client", "src")
         script_path = os.path.join(script_dir, script_name)
-
 
         process = subprocess.Popen(
             ["npx", "ts-node", os.path.basename(script_path), item_name, new_value],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            cwd=script_dir  # make sure ts-node runs in correct folder
+            cwd=script_dir
         )
 
         while True:
@@ -36,57 +92,12 @@ def run_qbo_script(script_name: str, item_name: str, new_value: str):
         if stderr:
             print(f"❗ STDERR:\n{stderr}")
             frappe.logger().error(f"[QBO Script Error] {stderr}")
-
+        return_code = process.returncode
+        print(f"📦 Script exit code: {return_code}")
+        frappe.logger().info(f"📦 Script exit code: {return_code}")
         return process.returncode == 0
 
     except Exception as e:
         print(f"❌ Exception: {e}")
         frappe.logger().error(f"❌ Failed to run script {script_name}: {str(e)}")
         return False
-
-
-def sync_qbo_cost_on_update(doc, method):
-    try:
-        # Manually load original
-        if not hasattr(doc, "_original"):
-            doc._original = frappe.get_doc(doc.doctype, doc.name)
-
-
-        if doc.valuation_rate != doc._original.valuation_rate:
-            if doc.custom_qbo_item_id:
-                success = run_qbo_script("updateQboCost.ts", doc.name, str(doc.valuation_rate))
-                if success:
-                    pass
-                    # Save sync timestamp AFTER QBO update
-                    #try:
-                        #enqueue("qb_connector.qbo_hooks.mark_qbo_synced", item_name=doc.name)
-                    #except Exception  as e:
-
-
-
-    except Exception as e:
-        frappe.logger().error(f"❌ Failed during QBO cost sync: {str(e)}")
-
-
-def sync_qbo_price_on_update(doc, method):
-
-    try:
-        # Manually load original item price doc to compare the price list rate
-        if not hasattr(doc, "_original"):
-            doc._original = frappe.get_doc(doc.doctype, doc.name)
-
-        # Check if the price list rate has changed
-        if doc.price_list_rate != doc._original.price_list_rate:
-            # Get the associated item using the item_code from the Item Price doc
-            item = frappe.get_doc("Item", doc.item_code)  # Fetch the related item
-
-            if item.custom_qbo_item_id:
-                # Run the script to update the price in QBO
-                success = run_qbo_script("updateQboPrice.ts", item.name, str(doc.price_list_rate))
-                if success:
-                    pass
-                    # Save sync timestamp AFTER QBO update
-                
-    except Exception as e:
-        frappe.logger().error(f"❌ Failed during QBO price sync: {str(e)}")
-

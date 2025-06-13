@@ -21,6 +21,14 @@ fixtures = [
     {
         "doctype": "Property Setter",
         "filters": [["doc_type", "=", "Customer"]]
+    },
+        {
+        "doctype": "Custom Field",
+        "filters": [["dt", "=", "Item"]]
+    },
+    {
+        "doctype": "Property Setter",
+        "filters": [["doc_type", "=", "Item"]]
     }
 ]
 scheduler_events = {
