@@ -91,3 +91,21 @@ def customer_update_handler(doc, method):
         frappe.db.set_value("Customer", doc.name, "custom_qbo_sync_status", "Missing Camp Link")
     else:
         frappe.db.set_value("Customer", doc.name, "custom_create_customer_in_qbo", 0)
+
+def customer_discount_update(doc, method):
+    # Get all Customers linked to this Camp
+    customers = frappe.get_all(
+        "Customer",
+        filters={"custom_camp_link": doc.name},
+        fields=["name"]
+    )
+    if not customers:
+        return
+        
+
+    for cust in customers:
+        customer = frappe.get_doc("Customer", cust["name"])
+        customer.custom_discount_ = doc.discount
+        customer.save()
+        print(f"✅ Updated Customer {customer.name} with new discount: {doc.discount}")
+
