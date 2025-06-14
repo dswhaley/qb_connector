@@ -7,30 +7,25 @@ app_license = "mit"
 
 
 fixtures = [
-    # This line is not needed unless you created Custom Fields for other doctypes
-    # {"doctype": "Custom Field", "filters": [["dt", "in", ["QuickBooks Settings"]]]},
-
-    # This line is critical — it captures any schema override to field lengths etc.
+    # Customizations for QuickBooks Settings
     {"doctype": "Property Setter", "filters": [["doc_type", "=", "QuickBooks Settings"]]},
 
-    # This line includes the actual records in QuickBooks Settings (optional)
-    {
-        "doctype": "Custom Field",
-        "filters": [["dt", "=", "Customer"]]
-    },
-    {
-        "doctype": "Property Setter",
-        "filters": [["doc_type", "=", "Customer"]]
-    },
-        {
-        "doctype": "Custom Field",
-        "filters": [["dt", "=", "Item"]]
-    },
-    {
-        "doctype": "Property Setter",
-        "filters": [["doc_type", "=", "Item"]]
-    }
+    # Custom fields and setters for Customer
+    {"doctype": "Custom Field", "filters": [["dt", "=", "Customer"]]},
+    {"doctype": "Property Setter", "filters": [["doc_type", "=", "Customer"]]},
+
+    # Custom fields and setters for Item
+    {"doctype": "Custom Field", "filters": [["dt", "=", "Item"]]},
+    {"doctype": "Property Setter", "filters": [["doc_type", "=", "Item"]]},
+
+    # Tax-related configurations
+    "Item Tax Template",
+    "Sales Taxes and Charges Template",
+    "Tax Rule",
+    "Tax Category",
 ]
+
+
 scheduler_events = {
     "hourly": [
         "qb_connector.api.refresh_qbo_token"
@@ -51,7 +46,11 @@ doc_events = {
         "before_save": "qb_connector.qbo_hooks.sync_qbo_price_on_update"
     },
     "Sales Invoice": {
-        "on_submit": "qb_connector.invoice_hooks.sync_sales_invoice_to_qbo"
+        "before_save": "qb_connector.invoice_hooks.apply_dynamic_discount",
+        "on_submit": "qb_connector.invoice_hooks.sync_sales_invoice_to_qbo" 
+    },
+    "Camp":{
+        "on_update": "qb_connector.api.customer_discount_update"
     }
 }
 # Apps
