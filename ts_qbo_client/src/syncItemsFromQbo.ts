@@ -17,6 +17,7 @@ interface QboItem {
   Active: boolean;
   UnitPrice?: number;
   PurchaseCost?: number;
+  Taxable?: boolean;
   MetaData?: {
     LastUpdatedTime?: string;
     CreateTime?: string;
@@ -90,7 +91,10 @@ export async function syncItemsFromQbo(): Promise<void> {
         custom_qbo_item_id: item.Id,
         custom_qbo_type: item.Type,
         custom_qbo_last_synced_at: now,
+        custom_tax_category: item.Taxable ? 'Taxable' : 'Not Taxable',
+        item_tax_template: item.Taxable ? "MD Sales Tax - Taxable" : "MD Sales Tax - Not Taxable",
       };
+      console.log(`📌 Creating Item '${itemCode}' with tax_category = ${docPayload.custom_tax_category}`);
 
       await frappe.createDoc('Item', docPayload);
       console.log(`✅ Created Item '${itemCode}' from QBO`);
