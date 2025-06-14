@@ -5,6 +5,10 @@ from frappe.utils import now_datetime
 
 
 def sync_qbo_cost_on_update(doc, method):
+    #Seperate method that needs to be called for sales taxes before save
+    set_item_tax_template(doc, method)
+
+
     try:
         if not hasattr(doc, "_original"):
             doc._original = frappe.get_doc(doc.doctype, doc.name)
@@ -89,3 +93,12 @@ def run_qbo_script(script_name: str, item_name: str, new_value: str) -> bool:
         frappe.logger().error(f"❌ Failed to run script {script_name}: {str(e)}")
         return False
 
+def set_item_tax_template(doc, method):
+    """
+    Set item_tax_template based on custom tax_category field.
+    """
+    if hasattr(doc, "tax_category"):
+        if doc.tax_category == "Taxable":
+            doc.item_tax_template = "MD Sales Tax - Taxable"
+        elif doc.tax_category == "Not Taxable":
+            doc.item_tax_template = "MD Sales Tax - Not Taxable"
