@@ -78,6 +78,10 @@ export async function syncItemsFromQbo(): Promise<void> {
         });
       }
 
+      const taxTemplate = item.Taxable
+        ? "MD Sales Tax - Taxable - F"
+        : "MD Sales Tax - Not Taxable - F";
+
       const docPayload = {
         item_code: itemCode,
         item_name: itemCode,
@@ -92,7 +96,11 @@ export async function syncItemsFromQbo(): Promise<void> {
         custom_qbo_type: item.Type,
         custom_qbo_last_synced_at: now,
         custom_tax_category: item.Taxable ? 'Taxable' : 'Not Taxable',
-        item_tax_template: item.Taxable ? "MD Sales Tax - Taxable" : "MD Sales Tax - Not Taxable",
+        taxes: [
+          {
+            item_tax_template: taxTemplate,
+          },
+        ],
       };
       console.log(`📌 Creating Item '${itemCode}' with tax_category = ${docPayload.custom_tax_category}`);
 
