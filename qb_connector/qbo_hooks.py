@@ -102,3 +102,30 @@ def set_item_tax_template(doc, method):
             doc.item_tax_template = "MD Sales Tax - Taxable"
         elif doc.tax_category == "Not Taxable":
             doc.item_tax_template = "MD Sales Tax - Not Taxable"
+            
+def sync_items_from_qbo(doc, method):
+    script_path = os.path.join(frappe.get_app_path("qb_connector"), "ts_qbo_client", "src", "syncItemsFromQbo.ts")
+
+    if not os.path.exists(script_path):
+        frappe.log_error("❌ syncItemsFromQbo.ts not found", "QBO Sync")
+        return
+
+    try:
+        result = subprocess.run(
+            ["npx", "ts-node", script_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            cwd=os.path.dirname(script_path),
+            env=os.environ.copy()
+        )
+
+        frappe.db.set_value(doc.doctype, doc.name, "last_sync_at", now_datetime())
+
+        if result.returncode != 0:
+            frappe.log_error(result.stderr, "QBO Sync Failed")
+        else:
+            frappe.logger().info("✅ QBO Item sync complete:\n" + result.stdout)
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "QBO Sync Execution Error")
