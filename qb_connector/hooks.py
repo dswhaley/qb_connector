@@ -52,6 +52,9 @@ doc_events = {
     },
     "Camp":{
         "on_update": "qb_connector.api.customer_discount_update"
+    },
+    "Sync QBO": {
+        "after_save": "qb_connector.qbo_hooks.sync_items_from_qbo"
     }
 }
 # Apps
