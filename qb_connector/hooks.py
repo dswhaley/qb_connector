@@ -40,7 +40,8 @@ doc_events = {
         "on_update": "qb_connector.api.customer_update_handler"
     },
         "Item": {
-        "before_save": "qb_connector.qbo_hooks.sync_qbo_cost_on_update"
+        "before_save": "qb_connector.qbo_hooks.sync_qbo_cost_on_update",
+        "after_insert": "qb_connector.qbo_hooks.sync_item_to_qbo"
     },
     "Item Price": {
         "before_save": "qb_connector.qbo_hooks.sync_qbo_price_on_update"
