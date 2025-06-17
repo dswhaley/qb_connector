@@ -23,6 +23,11 @@ fixtures = [
     {"doctype": "Property Setter", "filters": [["doc_type", "=", "Sync QBO Items"]]},
     {"doctype": "DocType", "filters": [["name", "=", "Sync QBO Items"]]},
 
+    {
+        "doctype": "Workspace",
+        "filters": [["name", "=", "Stock"]]
+    },
+
     # Tax-related doctypes
     "Item Tax Template",
     "Sales Taxes and Charges Template",
