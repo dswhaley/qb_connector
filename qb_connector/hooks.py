@@ -7,18 +7,23 @@ app_license = "mit"
 
 
 fixtures = [
-    # Customizations for QuickBooks Settings
+    # QuickBooks Settings
     {"doctype": "Property Setter", "filters": [["doc_type", "=", "QuickBooks Settings"]]},
 
-    # Custom fields and setters for Customer
+    # Customer
     {"doctype": "Custom Field", "filters": [["dt", "=", "Customer"]]},
     {"doctype": "Property Setter", "filters": [["doc_type", "=", "Customer"]]},
 
-    # Custom fields and setters for Item
+    # Item
     {"doctype": "Custom Field", "filters": [["dt", "=", "Item"]]},
     {"doctype": "Property Setter", "filters": [["doc_type", "=", "Item"]]},
 
-    # Tax-related configurations
+    # Sync QBO Items
+    {"doctype": "Custom Field", "filters": [["name", "like", "Sync QBO Items%"]]},
+    {"doctype": "Property Setter", "filters": [["doc_type", "=", "Sync QBO Items"]]},
+    {"doctype": "DocType", "filters": [["name", "=", "Sync QBO Items"]]},
+
+    # Tax-related doctypes
     "Item Tax Template",
     "Sales Taxes and Charges Template",
     "Tax Rule",
