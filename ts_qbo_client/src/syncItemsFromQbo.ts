@@ -82,6 +82,19 @@ export async function syncItemsFromQbo(): Promise<void> {
         ? "MD Sales Tax - Taxable - F"
         : "MD Sales Tax - Not Taxable - F";
 
+      // Check if item already exists
+      const existingItems = await frappe.getAllFiltered('Item', {
+        filters: {
+          custom_qbo_item_id: item.Id,
+        },
+        fields: ['name'],
+      });
+
+      if (existingItems.length > 0) {
+        console.log(`🔁 Skipping '${itemCode}': already exists in Frappe as '${existingItems[0].name}'`);
+        continue;
+      }
+
       const docPayload = {
         item_code: itemCode,
         item_name: itemCode,
@@ -103,12 +116,11 @@ export async function syncItemsFromQbo(): Promise<void> {
           },
         ],
       };
-      console.log(`📌 Creating Item '${itemCode}' with tax_category = ${docPayload.custom_tax_category}`);
 
+      console.log(`📌 Creating Item '${itemCode}' with tax_category = ${docPayload.custom_tax_category}`);
       await frappe.createDoc('Item', docPayload);
       console.log(`✅ Created Item '${itemCode}' from QBO`);
 
-      // ✅ Add or skip selling price
       const existingPrice = await frappe.getAllFiltered('Item Price', {
         filters: {
           item_code: itemCode,
