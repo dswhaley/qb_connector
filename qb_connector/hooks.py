@@ -40,8 +40,8 @@ doc_events = {
         "on_update": "qb_connector.api.customer_update_handler"
     },
         "Item": {
-        "before_save": "qb_connector.qbo_hooks.sync_qbo_cost_on_update",
-        "after_insert": "qb_connector.qbo_hooks.sync_item_to_qbo"
+        "before_save": "qb_connector.qbo_hooks.sync_qbo_cost_on_update"#,
+        #"after_insert": "qb_connector.qbo_hooks.sync_item_to_qbo"
     },
     "Item Price": {
         "before_save": "qb_connector.qbo_hooks.sync_qbo_price_on_update"
@@ -54,7 +54,7 @@ doc_events = {
         "on_update": "qb_connector.api.customer_discount_update"
     },
     "Sync QBO Items": {
-        "after_save": "qb_connector.qbo_hooks.sync_items_from_qbo"
+        "validate": "qb_connector.qbo_hooks.sync_items_from_qbo"
     }
 }
 # Apps
