@@ -115,5 +115,3 @@ def get_qty_discount_modifier(qty):
     if qty >= 800: return 5
     if qty >= 500: return 2
     return 0
-
-
