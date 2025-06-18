@@ -22,10 +22,27 @@ fixtures = [
     {"doctype": "Custom Field", "filters": [["name", "like", "Sync QBO Items%"]]},
     {"doctype": "Property Setter", "filters": [["doc_type", "=", "Sync QBO Items"]]},
     {"doctype": "DocType", "filters": [["name", "=", "Sync QBO Items"]]},
-
     {
         "doctype": "Workspace",
-        "filters": [["name", "=", "Stock"]]
+        "filters": [["name", "in", ["Stock", "Shipments"]]]
+    },
+    {
+        "doctype": "Custom Field",
+        "filters": [
+            ["dt", "in", ["Project", "Sales Order"]]
+        ]
+    }, 
+        {
+        "doctype": "DocType",
+        "filters": [["name", "=", "Shipment Tracker"]]
+    },
+    {
+        "doctype": "Custom Field",
+        "filters": [["dt", "=", "Shipment Tracker"]]
+    },
+    {
+        "doctype": "Property Setter",
+        "filters": [["doc_type", "=", "Shipment Tracker"]]
     },
 
     # Tax-related doctypes
@@ -58,15 +75,26 @@ doc_events = {
     },
     "Sales Invoice": {
         "before_save": "qb_connector.invoice_hooks.apply_dynamic_discount",
-        "on_submit": "qb_connector.invoice_hooks.sync_sales_invoice_to_qbo" 
+        "on_submit": [
+            "qb_connector.invoice_hooks.sync_sales_invoice_to_qbo",
+            "qb_connector.shipment_hooks.link_invoice_to_tracker"
+        ] 
     },
     "Camp":{
         "on_update": "qb_connector.api.customer_discount_update"
     },
     "Sync QBO Items": {
         "validate": "qb_connector.qbo_hooks.sync_items_from_qbo"
+    },
+        "Sales Order": {
+        "on_submit": "qb_connector.shipment_hooks.create_shipment_tracker"
+    },
+        "Payment Entry": {
+            "on_submit":"qb_connector.shipment_hooks.link_payment_to_tracker"
     }
 }
+
+
 # Apps
 # ------------------
 
