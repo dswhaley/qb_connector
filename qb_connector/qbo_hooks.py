@@ -102,7 +102,9 @@ def set_item_tax_template(doc, method):
             doc.item_tax_template = "MD Sales Tax - Taxable"
         elif doc.tax_category == "Not Taxable":
             doc.item_tax_template = "MD Sales Tax - Not Taxable"
-def sync_items_from_qbo(doc, method):
+
+@frappe.whitelist()
+def sync_items_from_qbo():
     """Trigger item sync via background job."""
     print("✅ Enqueuing sync_items_from_qbo")
     frappe.logger().info("✅ Enqueuing sync_items_from_qbo")
@@ -110,13 +112,9 @@ def sync_items_from_qbo(doc, method):
     frappe.enqueue("qb_connector.qbo_hooks.run_item_sync_script",
         queue="default",
         timeout=600,
-        now=False,
-        docname=doc.name
-    )
-def run_item_sync_script(docname):
-    print(f"🚀 Running QBO item sync for: {docname}")
-    frappe.logger().info(f"🚀 Running QBO item sync for: {docname}")
-
+        now=False
+        )
+def run_item_sync_script():
     ts_client_path = os.path.join(frappe.get_app_path("qb_connector"), "..", "ts_qbo_client")
 
     try:
@@ -131,10 +129,8 @@ def run_item_sync_script(docname):
         print("📤 Script stdout:\n", result.stdout)
         print("⚠️ Script stderr:\n", result.stderr)
 
-        frappe.db.set_value("Sync QBO Items", docname, "sync_status", "Synced")
         frappe.logger().info("✅ QBO item sync completed")
 
     except subprocess.CalledProcessError as e:
         print("❌ Script failed with error:\n", e.stderr)
         frappe.logger().error(f"❌ QBO item sync failed: {e.stderr}")
-        frappe.db.set_value("Sync QBO Items", docname, "sync_status", "Failed")
