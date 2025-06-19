@@ -5,6 +5,10 @@ app_description = "This app will connect to Quickbooks Online and will make Invo
 app_email = "danielwhaleygcc@gmail.com"
 app_license = "mit"
 
+doctype_list_js = {
+    "Sales Invoice": "public/js/sales_invoice_list.js",
+    "Item": "public/js/items_list.js"
+}
 
 fixtures = [
     # QuickBooks Settings
@@ -53,6 +57,7 @@ fixtures = [
 ]
 
 
+
 scheduler_events = {
     "hourly": [
         "qb_connector.api.refresh_qbo_token"
@@ -82,18 +87,15 @@ doc_events = {
     "Camp":{
         "on_update": "qb_connector.api.customer_discount_update"
     },
-    "Sync QBO Items": {
-        "validate": "qb_connector.qbo_hooks.sync_items_from_qbo"
-    },
-        "Sales Order": {
+    "Sales Order": {
         "on_submit": "qb_connector.shipment_hooks.create_shipment_tracker",
         "validate": "qb_connector.discount_hooks.apply_dynamic_discount"
 
     },
         "Payment Entry": {
             "on_submit":"qb_connector.shipment_hooks.link_payment_to_tracker"
-    }
-}
+     }
+}     
 
 
 # Apps
