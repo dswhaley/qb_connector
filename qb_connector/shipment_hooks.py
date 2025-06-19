@@ -14,7 +14,7 @@ def create_shipment_tracker(doc, method):
     tracker.sales_order = doc.name
     tracker.shipment_status = "Sales Order Made"
     tracker.shipment_name = shipmentName
-    tracker.custom_camp = customer.custom_camp_link
+    tracker.camp = customer.custom_camp_link
     
     tracker.insert()
     frappe.db.commit()
