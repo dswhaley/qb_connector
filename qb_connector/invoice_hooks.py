@@ -3,6 +3,7 @@ import subprocess
 import json
 import os
 from frappe.utils import now_datetime
+import qb_connector.api
 
 # ========== Hook: Sync Sales Invoice to QBO ==========
 def sync_sales_invoice_to_qbo(doc, method):
@@ -64,3 +65,21 @@ def run_qbo_script(script_name: str, docname: str) -> bool:
         frappe.logger().error(f"❌ Exception in run_qbo_script: {str(e)}")
         return False
 
+@frappe.whitelist()
+def retry_failed_invoice_syncs():
+    # your actual logic
+    resynced_count = 0
+
+    failed_invoices = frappe.get_all("Sales Invoice", filters={"custom_sync_status": "Failed"}, fields=["name"])
+    for inv in failed_invoices:
+        try:
+            # call your actual sync function
+            sync_sales_invoice_to_qbo(frappe.get_doc("Sales Invoice", inv.name), "manual_retry")
+            resynced_count += 1
+        except Exception as e:
+            frappe.log_error(str(e), f"Retry failed for {inv.name}")
+
+    return {
+        "message": f"✅ Resynced {resynced_count} invoice(s).",
+        "refresh": resynced_count > 0
+    }
