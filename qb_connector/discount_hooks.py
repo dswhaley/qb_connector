@@ -1,3 +1,4 @@
+import frappe
 # ========== Validation: Ensure customer discount is sane ==========
 def validate_customer_discount(doc, method):
     print("✅ Validate Customer Hook Started")
