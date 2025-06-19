@@ -19,7 +19,7 @@ function isFilled(str?: string | null): boolean {
 
 export async function createCustomerInQbo(customerName: string): Promise<void> {
   const customer = await frappe.getDoc<any>('Customer', customerName);
-  const rawSettings = await frappe.getDoc('QuickBooks Settings');
+  const rawSettings = await frappe.getDoc('QuickBooks Settings', 'QuickBooks Settings');
   const settings: QuickBooksSettings = fromFrappe(rawSettings);
 
   const baseUrl = await getQboBaseUrl(); // ✅ uses QBO_ENV

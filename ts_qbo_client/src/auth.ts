@@ -31,10 +31,11 @@ export class QuickBooksAuth {
    * Builds the QuickBooks OAuth2 login URL.
    */
   async initiateAuth(): Promise<string> {
-    return this.authClient.authorizeUri({
+    const url = this.authClient.authorizeUri({
       scope: ['com.intuit.quickbooks.accounting'],
       state: uuidv4(),
     });
+    return url;
   }
 
   /**
@@ -42,7 +43,10 @@ export class QuickBooksAuth {
    */
   async handleCallback(code: string, realmId: string, state?: string): Promise<void> {
     try {
-      const raw = await frappe.getDoc('QuickBooks Settings');
+      //const raw = await frappe.getDoc('QuickBooks Settings');
+      const raw = await frappe.getDoc('QuickBooks Settings', 'QuickBooks Settings');
+
+
       const settings = fromFrappe(raw);
 
       this.authClient = new IntuitOAuth({
@@ -86,7 +90,8 @@ export class QuickBooksAuth {
   async refreshToken(): Promise<void> {
     const ts = new Date().toISOString();
     const startGetDoc = Date.now();
-    const raw = await frappe.getDoc<QuickBooksSettings>('QuickBooks Settings');
+    const raw = await frappe.getDoc('QuickBooks Settings', 'QuickBooks Settings');
+
     console.log(`[${ts}] getDoc took ${Date.now() - startGetDoc}ms`);
     const settings = fromFrappe(raw);
 
@@ -124,7 +129,8 @@ export async function getQboAuthHeaders(): Promise<{
   Accept: string;
   'Content-Type': string;
 }> {
-  const rawSettings = await frappe.getDoc('QuickBooks Settings');
+  const rawSettings = await frappe.getDoc('QuickBooks Settings', 'QuickBooks Settings');
+
   const settings: QuickBooksSettings = fromFrappe(rawSettings);
 
   if (!settings.accessToken) {
@@ -142,7 +148,7 @@ export async function getQboAuthHeaders(): Promise<{
  * Returns correct QBO API base URL based on environment
  */
 export async function getQboBaseUrl(): Promise<string> {
-  const rawSettings = await frappe.getDoc('QuickBooks Settings');
+  const rawSettings = await frappe.getDoc('QuickBooks Settings', 'QuickBooks Settings');
   const settings: QuickBooksSettings = fromFrappe(rawSettings);
 
   if (!settings.realmId) {

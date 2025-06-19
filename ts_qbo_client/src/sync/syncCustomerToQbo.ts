@@ -44,7 +44,9 @@ export async function syncCustomerToQbo(customerName: string): Promise<'matched'
     return 'matched';
   }
 
-  const rawSettings = await frappe.getDoc<any>('QuickBooks Settings');
+ //const rawSettings = await frappe.getDoc<any>('QuickBooks Settings');
+  const rawSettings = await frappe.getDoc<any>('QuickBooks Settings', 'QuickBooks Settings');
+
   const settings: QuickBooksSettings = fromFrappe(rawSettings);
 
   const baseUrl =

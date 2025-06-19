@@ -2,7 +2,8 @@
 import { QuickBooksSettings } from '../types';
 
 export function fromFrappe(raw: any): QuickBooksSettings {
-  const result = {
+
+  return {
     name: raw.name,
     clientId: raw.clientid,
     clientSecret: raw.clientsecret,
@@ -12,8 +13,8 @@ export function fromFrappe(raw: any): QuickBooksSettings {
     redirectUri: raw.redirecturi,
     last_refresh: raw.last_refresh
   };
-  return result;
 }
+
 export function toFrappe(settings: QuickBooksSettings): any {
   return {
     name: settings.name,

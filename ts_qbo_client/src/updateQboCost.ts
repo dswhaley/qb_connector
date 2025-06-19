@@ -51,7 +51,7 @@ async function main() {
     Authorization: headers.Authorization?.slice(0, 30) + '...'
   }, null, 2));
 
-  const rawSettings = await frappe.getDoc<QuickBooksSettings>('QuickBooks Settings');
+  const rawSettings = await frappe.getDoc<QuickBooksSettings>('QuickBooks Settings', 'QuickBooks Settings');
   const settings = fromFrappe(rawSettings);
   log(JSON.stringify(settings, null, 2));
 

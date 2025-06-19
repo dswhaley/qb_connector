@@ -18,7 +18,7 @@ const port = process.env.PORT || 3000;
 
 app.get('/auth/qbo', async (req, res) => {
   try {
-    const raw = await frappe.getDoc<QuickBooksSettings>('QuickBooks Settings');
+    const raw = await frappe.getDoc<QuickBooksSettings>('QuickBooks Settings', 'QuickBooks Settings');
     const settings = fromFrappe(raw);
     const qbo = new QuickBooksAuth(settings);
     const authUrl = await qbo.initiateAuth();
@@ -40,7 +40,7 @@ app.get('/auth/qbo/callback', async (req: Request, res: Response): Promise<void>
   }
 
   try {
-    const settings = await frappe.getDoc<QuickBooksSettings>('QuickBooks Settings');
+    const settings = await frappe.getDoc<QuickBooksSettings>('QuickBooks Settings', 'QuickBooks Settings');
     const qbo = new QuickBooksAuth(settings);
     const start = Date.now();
     await qbo.handleCallback(code, realmId, state);

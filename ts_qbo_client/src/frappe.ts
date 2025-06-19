@@ -33,16 +33,11 @@ export const frappe = {
    * If no name is provided, and multiple documents exist, returns the first.
    */
   async getDoc<T>(doctype: string, name?: string): Promise<T> {
+    const url = name
+      ? `${baseUrl}/api/resource/${doctype}/${name}`
+      : `${baseUrl}/api/resource/${doctype}`;  // ← handles singleton
 
-    if (!name) {
-      const records = await frappe.getAll<{ name: string }>(doctype);
-      if (!records.length) throw new Error(`No records found for ${doctype}`);
-      name = records[0].name;
-    }
-
-    const url = `${baseUrl}/api/resource/${doctype}/${name}`;
     const response = await axios.get(url, axiosConfig());
-
     return (response.data as { data: T }).data;
   },
 
@@ -50,8 +45,11 @@ export const frappe = {
    * Update a document in ERPNext
    */
   async updateDoc(doctype: string, doc: any): Promise<void> {
-    const url = `${baseUrl}/api/resource/${doctype}/${doc.name}`;
-    const response = await axios.put(url, doc, axiosConfig());
+    const url = doc.name
+      ? `${baseUrl}/api/resource/${doctype}/${doc.name}`
+      : `${baseUrl}/api/resource/${doctype}`; // handles singleton
+
+    await axios.put(url, doc, axiosConfig());
   },
 
   /**
