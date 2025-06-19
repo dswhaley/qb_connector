@@ -74,7 +74,6 @@ doc_events = {
         "before_save": "qb_connector.qbo_hooks.sync_qbo_price_on_update"
     },
     "Sales Invoice": {
-        "before_save": "qb_connector.invoice_hooks.apply_dynamic_discount",
         "on_submit": [
             "qb_connector.invoice_hooks.sync_sales_invoice_to_qbo",
             "qb_connector.shipment_hooks.link_invoice_to_tracker"
@@ -87,7 +86,9 @@ doc_events = {
         "validate": "qb_connector.qbo_hooks.sync_items_from_qbo"
     },
         "Sales Order": {
-        "on_submit": "qb_connector.shipment_hooks.create_shipment_tracker"
+        "on_submit": "qb_connector.shipment_hooks.create_shipment_tracker",
+        "validate": "qb_connector.discount_hooks.apply_dynamic_discount"
+
     },
         "Payment Entry": {
             "on_submit":"qb_connector.shipment_hooks.link_payment_to_tracker"
