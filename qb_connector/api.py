@@ -4,6 +4,8 @@ import frappe
 import requests
 from frappe import _
 from frappe.utils.password import get_decrypted_password
+import qb_connector.qbo_hooks 
+
 
 @frappe.whitelist(allow_guest=True)
 def handle_qbo_callback(code=None, realmId=None):
@@ -24,6 +26,7 @@ def handle_qbo_callback(code=None, realmId=None):
         frappe.log_error(str(e), "QBO Callback Failure")
         frappe.throw(_("Failed to handle QuickBooks callback."))
 
+@frappe.whitelist()
 def refresh_qbo_token():
     frappe.logger().info("🔄 Scheduler: Running refresh_qbo_token")
     try:
