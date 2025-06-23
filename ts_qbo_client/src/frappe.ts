@@ -56,8 +56,10 @@ export const frappe = {
    * Get all documents for a given DocType
    */
   async getAll<T = any>(doctype: string): Promise<T[]> {
-    const url = `${baseUrl}/api/resource/${doctype}`;
-    const response = await axios.get(url, axiosConfig());
+    const url = new URL(`${baseUrl}/api/resource/${doctype}`);
+    url.searchParams.set('limit_page_length', '1000');  // 🔥 always use max safe limit
+
+    const response = await axios.get(url.toString(), axiosConfig());
     return (response.data as { data: T[] }).data;
   },
 
