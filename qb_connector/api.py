@@ -30,11 +30,7 @@ def handle_qbo_callback(code=None, realmId=None):
 def refresh_qbo_token():
     frappe.logger().info("🔄 Scheduler: Running refresh_qbo_token")
     try:
-        settings_name = frappe.db.get_value("QuickBooks Settings", {}, "name")
-        if not settings_name:
-            return
-
-        settings = frappe.get_doc("QuickBooks Settings", settings_name)
+        settings = frappe.get_doc("QuickBooks Settings", "QuickBooks Settings")
 
         client_id = settings.clientid
         client_secret = settings.clientsecret
@@ -76,11 +72,13 @@ def test_scheduler_job():
 
 
 def customer_update_handler(doc, method):
+    print("WE GOT TO HERE")
     if (
         doc.custom_create_customer_in_qbo == 1 and
         doc.custom_qbo_sync_status != "Synced" and
         doc.custom_camp_link
     ):
+        print("REGISTERED THAT IT WAS NOT SYNCED AND BOX WAS CHECKED")
         try:
             requests.post(
                 "http://localhost:3000/api/handle-customer-create",
