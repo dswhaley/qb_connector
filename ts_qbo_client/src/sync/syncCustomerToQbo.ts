@@ -23,6 +23,7 @@ interface QboCustomer {
     City?: string;
     CountrySubDivisionCode?: string;
     PostalCode?: string;
+    Country?: string;
   };
 }
 
@@ -44,9 +45,7 @@ export async function syncCustomerToQbo(customerName: string): Promise<'matched'
     return 'matched';
   }
 
- //const rawSettings = await frappe.getDoc<any>('QuickBooks Settings');
   const rawSettings = await frappe.getDoc<any>('QuickBooks Settings', 'QuickBooks Settings');
-
   const settings: QuickBooksSettings = fromFrappe(rawSettings);
 
   const baseUrl =
@@ -82,22 +81,28 @@ export async function syncCustomerToQbo(customerName: string): Promise<'matched'
         .split(',')
         .map((p) => p.trim().toLowerCase());
 
-      if (parts.length === 4) {
-        const [line1, city, state, postalCode] = parts;
+      if (parts.length === 4 || parts.length === 5) {
+        const [line1, city, state, postalCode, country] = parts;
 
         match = fullResp.data.QueryResponse.Customer?.find((qbo) => {
           const addr = qbo.BillAddr;
-          return (
-            addr &&
-            addr.Line1?.trim().toLowerCase() === line1 &&
-            addr.City?.trim().toLowerCase() === city &&
-            addr.CountrySubDivisionCode?.trim().toLowerCase() === state &&
-            addr.PostalCode?.trim().toLowerCase() === postalCode
-          );
+          if (!addr) return false;
+
+          const lineMatch = addr.Line1?.trim().toLowerCase() === line1;
+          const cityMatch = addr.City?.trim().toLowerCase() === city;
+          const stateMatch = addr.CountrySubDivisionCode?.trim().toLowerCase() === state;
+          const postalMatch = addr.PostalCode?.trim().toLowerCase() === postalCode;
+
+          let countryMatch = true;
+          if (parts.length === 5 && country) {
+            countryMatch = addr.Country?.trim().toLowerCase() === country;
+          }
+
+          return lineMatch && cityMatch && stateMatch && postalMatch && countryMatch;
         });
       } else {
         console.warn(
-          `⚠️ Billing address for ${customer.name} is not in expected format: 'Line1, City, State, Zip'`
+          `⚠️ Billing address for ${customer.name} is not in expected format: 'Line1, City, State, Zip[, Country]'`
         );
       }
     }

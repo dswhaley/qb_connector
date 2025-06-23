@@ -34,6 +34,16 @@ export async function createCustomerInQbo(customerName: string): Promise<void> {
 
   const missing: string[] = [];
 
+  if (isFilled(customer.default_currency)) {
+  qboCustomer.CurrencyRef = {
+    value: customer.default_currency.trim().toUpperCase(),
+  };
+
+  console.log(qboCustomer.CurrencyRef);
+  } else {
+    qboCustomer.CurrencyRef = { value: 'USD' };
+  }
+  
   // ✅ Email
   if (isFilled(customer.custom_email)) {
     qboCustomer.PrimaryEmailAddr = { Address: customer.custom_email.trim() };
@@ -51,15 +61,26 @@ export async function createCustomerInQbo(customerName: string): Promise<void> {
   // ✅ Billing Address
   if (isFilled(customer.custom_billing_address)) {
     const parts = customer.custom_billing_address.split(',').map((p: string) => p.trim());
-    if (parts.length >= 4 && parts.every(isFilled)) {
+    if (parts.length === 4 && parts.every(isFilled)) {
       const [Line1, City, State, PostalCode] = parts;
       qboCustomer.BillAddr = {
         Line1,
         City,
         CountrySubDivisionCode: State,
         PostalCode,
+        Country: "United States"
       };
-    } else {
+    } else if(parts.length === 5 && parts.every(isFilled)){
+      const[Line1, City, State, PostalCode, countryPart] = parts;
+      const Country = isFilled(countryPart) ? countryPart : 'United States';
+            qboCustomer.BillAddr = {
+        Line1,
+        City,
+        CountrySubDivisionCode: State,
+        PostalCode,
+        Country
+      };
+    }else{
       missing.push('Address');
     }
   } else {
@@ -88,7 +109,7 @@ export async function createCustomerInQbo(customerName: string): Promise<void> {
   // ✅ POST to QBO
   try {
     const response = await axios.post<QboCreateCustomerResponse>(
-      `${baseUrl}/${settings.realmId}/customer`,
+      `${baseUrl}/customer`,
       qboCustomer,
       {
         headers: {
@@ -116,7 +137,12 @@ export async function createCustomerInQbo(customerName: string): Promise<void> {
 
     console.log(`✅ Created QBO customer '${customer.customer_name}' with ID ${created.Id}`);
   } catch (error: any) {
-    console.error(`❌ Failed to create customer '${customer.customer_name}' in QBO:`, error.response?.data || error.message);
+    if (error.response?.data?.Fault) {
+      console.error(`❌ Failed to create customer '${customer.customer_name}' in QBO`);
+      console.error(JSON.stringify(error.response.data.Fault, null, 2));
+    } else {
+      console.error(`❌ Failed to create customer '${customer.customer_name}': ${error.message}`);
+    }
     throw error;
   }
 }
