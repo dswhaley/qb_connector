@@ -31,7 +31,7 @@ interface QboItemResponse {
 }
 
 export async function syncItemsFromQbo(): Promise<void> {
-  const rawSettings = await frappe.getDoc('QuickBooks Settings');
+  const rawSettings = await frappe.getDoc<any>('QuickBooks Settings', 'QuickBooks Settings');
   const settings = fromFrappe(rawSettings);
 
   const realmId = settings.realmId;
