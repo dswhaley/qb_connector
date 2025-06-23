@@ -11,6 +11,7 @@ interface Customer {
 
 async function main() {
   const allCustomers = await frappe.getAll<Customer>('Customer');
+
   const toSync = allCustomers.filter(
     (cust) => cust.custom_qbo_sync_status !== 'Synced'
   );
