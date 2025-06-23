@@ -2,8 +2,9 @@ import { getQboAuthHeaders, getQboBaseUrl } from "./auth";
 import { frappe } from "./frappe";
 import axios from "axios";
 import dotenv from "dotenv";
-
 dotenv.config();
+
+const salesTaxID = process.env.SALES_TAX_ID;
 
 interface QboInvoiceResponse {
   Invoice?: {
@@ -11,7 +12,6 @@ interface QboInvoiceResponse {
     [key: string]: any;
   };
 }
-const salesTaxID = process.env.SALES_TAX_ID;
 
 async function main() {
   const invoiceName = process.argv[2];
@@ -59,13 +59,10 @@ async function main() {
         ? prices[0].price_list_rate
         : line.rate || line.amount / line.qty || 0;
 
-      
-      // Map ERPNext custom_tax_category to QBO TaxCodeRef
       const taxCode = item.custom_tax_category === "Taxable" ? "TAX" : "NON";
       if (!["Taxable", "Not Taxable"].includes(item.custom_tax_category)) {
         console.warn(`⚠️ Invalid custom_tax_category '${item.custom_tax_category}' for item '${item.name}'. Defaulting to NON.`);
       }
-      
 
       lineItems.push({
         DetailType: "SalesItemLineDetail",
@@ -113,26 +110,28 @@ async function main() {
       qboInvoice.GlobalTaxCalculation = "NotApplicable";
     }
 
-
-    console.log("📝 QBO Invoice Payload:");
-    console.dir(qboInvoice, { depth: null });
-
     const response = await axios.post(`${baseUrl}/invoice`, qboInvoice, { headers });
     const resData = response.data as QboInvoiceResponse;
 
     if (response.status === 200 || response.status === 201) {
-      console.log(`✅ Synced invoice ${invoice.name} to QBO (Id: ${resData.Invoice?.Id})`);
-      process.exit(0);
+      if (resData.Invoice?.Id) {
+        const qboId = resData.Invoice.Id;
+        
+        // Print ONLY the QBO Invoice ID to stdout (for Python to capture)
+        console.log(qboId);  // Output the QBO Invoice ID
+
+        process.exitCode = 0;  // Success
+      } else {
+        console.error("❌ QBO Invoice ID not found in the response.");
+        process.exitCode = -1;  // Failure
+      }
     } else {
       console.error(`❌ Failed to sync invoice: Status ${response.status}, Data: ${JSON.stringify(response.data, null, 2)}`);
-      process.exit(1);
+      process.exitCode = -1;  // Failure
     }
   } catch (err: any) {
     console.error(`❌ Exception during invoice sync: ${err.message}`);
-    if (err.response) {
-      console.error("QBO API Error Details:", JSON.stringify(err.response.data, null, 2));
-    }
-    process.exit(1);
+    process.exitCode = -1;  // Failure
   }
 }
 
