@@ -7,7 +7,8 @@ app_license = "mit"
 
 doctype_list_js = {
     "Sales Invoice": "public/js/sales_invoice_list.js",
-    "Item": "public/js/items_list.js"
+    "Item": "public/js/items_list.js",
+    "Payment Entry": "public/js/payments_lists.js"
 }
 
 fixtures = [
@@ -93,7 +94,10 @@ doc_events = {
 
     },
         "Payment Entry": {
-            "on_submit":"qb_connector.shipment_hooks.link_payment_to_tracker"
+            "on_submit":[
+                "qb_connector.shipment_hooks.link_payment_to_tracker",
+                "qb_connector.payment_hooks.sync_payment_entry_to_qbo"
+            ]
      }
 }     
 
