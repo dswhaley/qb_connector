@@ -38,6 +38,7 @@ interface FrappePaymentEntryPayload {
     allocated_amount: number;
   }[];
   custom_qbo_payment_id: string;
+  custom_sync_status?: string; // Adding the custom_sync_status field
 }
 
 interface FrappeDocCreateResponse {
@@ -109,34 +110,38 @@ async function main() {
         console.log(`💸 Creating Payment Entry for QBO Payment ID: ${payment.Id}`);
 
         const paymentEntry: FrappePaymentEntryPayload & {
-        reference_no: string;
-        reference_date: string;
+          reference_no: string;
+          reference_date: string;
         } = {
-        payment_type: "Receive",
-        party_type: "Customer",
-        party: frappeInvoice.customer,
-        posting_date: payment.TxnDate,
-        paid_amount: payment.TotalAmt,
-        received_amount: payment.TotalAmt,
-        paid_to: "Bank Account - F",
-        mode_of_payment: "Cash",
-        reference_no: payment.Id,
-        reference_date: payment.TxnDate,
-        references: [
+          payment_type: "Receive",
+          party_type: "Customer",
+          party: frappeInvoice.customer,
+          posting_date: payment.TxnDate,
+          paid_amount: payment.TotalAmt,
+          received_amount: payment.TotalAmt,
+          paid_to: "Bank Account - F",
+          mode_of_payment: "Cash",
+          reference_no: payment.Id,
+          reference_date: payment.TxnDate,
+          references: [
             {
-            reference_doctype: "Sales Invoice",
-            reference_name: frappeInvoice.name,
-            allocated_amount: payment.TotalAmt,
+              reference_doctype: "Sales Invoice",
+              reference_name: frappeInvoice.name,
+              allocated_amount: payment.TotalAmt,
             },
-        ],
-        custom_qbo_payment_id: payment.Id,
+          ],
+          custom_qbo_payment_id: payment.Id,
+          custom_sync_status: "Pending", // Initially set to Pending
         };
 
         try {
           console.log("📤 Payload sent to Frappe:", JSON.stringify(paymentEntry, null, 2));
           const created = await frappe.createDoc<FrappeDocCreateResponse>("Payment Entry", paymentEntry);
           const createdName = created.name;
-          
+
+          // Update the custom_sync_status field before submitting
+          created.custom_sync_status = "Synced"; // Set sync status to "Synced"
+
           // ✅ Submit the newly created Payment Entry
           await frappe.submitDoc("Payment Entry", createdName);
 
