@@ -31,7 +31,8 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-
+#Specific files
+ts_qbo_client/src/QBO_ID_Scripts/payment_method_map.json
 # Dependency directories
 node_modules/
 jspm_packages/
