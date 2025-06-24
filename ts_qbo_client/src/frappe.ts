@@ -89,5 +89,10 @@ createDoc: async <T = any>(doctype: string, doc: Partial<T>): Promise<T> => {
   const url = `${baseUrl}/api/resource/${doctype}`;
   const response = await axios.post(url, doc, axiosConfig());
   return (response.data as { data: T }).data;
+},
+submitDoc: async (doctype: string, name: string): Promise<void> => {
+  const url = `${baseUrl}/api/resource/${doctype}/${name}`;
+  await axios.put(url, { docstatus: 1 }, axiosConfig());
 }
+
 };
