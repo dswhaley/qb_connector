@@ -50,12 +50,20 @@ def sync_qbo_price_on_update(doc, method):
         frappe.logger().error(f"❌ Price sync failed for Item Price {doc.name}: {str(e)}")
 
 
-def mark_qbo_sync_status(doctype: str, docname: str, status: str):
+def mark_qbo_sync_status(doctype: str, docname: str, status: str, invoice_id: str = None):
     """Set last_synced and sync_status after QBO update."""
     try:
         doc = frappe.get_doc(doctype, docname)
         doc.db_set("custom_last_synced_at", now_datetime())
         doc.db_set("custom_sync_status", status)
+        
+        # Only update the custom_qbo_sales_invoice_id if invoice_id is provided
+        if invoice_id:
+            doc.db_set("custom_qbo_sales_invoice_id", invoice_id)
+        
+        # Save the document with the updated fields
+        doc.save()
+
     except Exception as e:
         frappe.logger().error(f"❌ Failed to update sync status for {doctype} {docname}: {str(e)}")
         print(f"❌ Error in mark_qbo_sync_status: {e}")
