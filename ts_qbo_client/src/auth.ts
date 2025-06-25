@@ -144,6 +144,17 @@ export async function getQboAuthHeaders(): Promise<{
   };
 }
 
+export async function getRealmId(): Promise<string>{
+  const rawSettings = await frappe.getDoc('QuickBooks Settings', 'QuickBooks Settings');
+
+  const settings: QuickBooksSettings = fromFrappe(rawSettings);
+
+  if (!settings.realmId) {
+    throw new Error('❌ No QBO access token found in QuickBooks Settings');
+  }
+  
+  return settings.realmId;
+}
 /**
  * Returns correct QBO API base URL based on environment
  */
