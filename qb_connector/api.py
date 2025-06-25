@@ -72,13 +72,11 @@ def test_scheduler_job():
 
 
 def customer_update_handler(doc, method):
-    print("WE GOT TO HERE")
     if (
         doc.custom_create_customer_in_qbo == 1 and
         doc.custom_qbo_sync_status != "Synced" and
         doc.custom_camp_link
     ):
-        print("REGISTERED THAT IT WAS NOT SYNCED AND BOX WAS CHECKED")
         try:
             requests.post(
                 "http://localhost:3000/api/handle-customer-create",
