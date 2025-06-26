@@ -95,7 +95,6 @@ def retry_failed_invoice_syncs():
     failed_invoices = frappe.get_all("Sales Invoice", filters={"custom_sync_status": "Failed"}, fields=["name"])
     for inv in failed_invoices:
         try:
-            # call your actual sync function
             sync_sales_invoice_to_qbo(frappe.get_doc("Sales Invoice", inv.name), "manual_retry")
             resynced_count += 1
         except Exception as e:
@@ -105,3 +104,34 @@ def retry_failed_invoice_syncs():
         "message": f"✅ Resynced {resynced_count} invoice(s).",
         "refresh": resynced_count > 0
     }
+
+
+
+def use_tax_status(doc, method):
+    try:
+        customer = frappe.get_doc("Customer", doc.customer)
+    except Exception:
+        raise ValueError("❌ Doc does not have a valid customer link.")
+    
+    print(f"Tax Status: {customer.custom_tax_status}\n State Status: {get_state_tax_status(customer)}")
+    if customer.custom_tax_status == "Exempt" or get_state_tax_status(customer) == 0:
+        doc.exempt_from_sales_tax = 1
+    else:
+        doc.exempt_from_sales_tax = 0
+
+def get_state_tax_status(customer):
+    try:
+        parts = customer.custom_billing_address.split(",")
+        state = parts[2].strip().lower()
+        print(f"📂 State: {state}")
+    except Exception:
+        raise ValueError("❌ Invalid billing address format (expected at least 3 parts: 'Street, City, State').")
+    
+    state_info = frappe.get_doc("State Tax Information", "State Tax Information")
+
+    meta = frappe.get_meta("State Tax Information")
+    if any(df.fieldname == state for df in meta.fields):
+        return state_info.get(state)
+    else:
+        raise ValueError(f"❌ Invalid State: field '{state}' not found in State Tax Information.")
+    
