@@ -72,11 +72,35 @@ def test_scheduler_job():
 
 
 def customer_update_handler(doc, method):
-    if (
-        doc.custom_create_customer_in_qbo == 1 and
-        doc.custom_qbo_sync_status != "Synced" and
-        doc.custom_camp_link
-    ):
+    print("HOOK FIRED")
+    if doc.custom_create_customer_in_qbo != 1:
+        # Reset trigger if flag was turned off
+        frappe.db.set_value("Customer", doc.name, "custom_create_customer_in_qbo", 0)
+        return
+
+    if not doc.custom_camp_link:
+        frappe.db.set_value("Customer", doc.name, "custom_qbo_sync_status", "Missing Camp Link")
+        frappe.db.set_value("Customer", doc.name, "custom_create_customer_in_qbo", 0)
+        return
+
+    try:
+        camp = frappe.get_doc("Camp", doc.custom_camp_link)
+    except Exception as e:
+        print(f"Invalid Camp Link on Customer {doc.name}: {e}", "QBO Sync Error")
+        frappe.log_error(f"Invalid Camp Link on Customer {doc.name}: {e}", "QBO Sync Error")
+        frappe.db.set_value("Customer", doc.name, "custom_qbo_sync_status", "Invalid Camp Link")
+        return
+
+    if camp.tax_exempt == "Pending":
+        frappe.db.set_value("Customer", doc.name, "custom_qbo_sync_status", "Tax Status Pending")
+        frappe.db.set_value("Customer", doc.name, "custom_create_customer_in_qbo", 0)
+        return
+    if camp.tax_exempt == "Exempt" and not camp.tax_exemption_number:
+        frappe.db.set_value("Customer", doc.name, "custom_qbo_sync_status", "Missing Tax Exemption Number")
+        frappe.db.set_value("Customer", doc.name, "custom_create_customer_in_qbo", 0)
+        return       
+    if doc.custom_qbo_sync_status != "Synced":
+        print("WE GOT HERE")
         try:
             requests.post(
                 "http://localhost:3000/api/handle-customer-create",
@@ -84,12 +108,8 @@ def customer_update_handler(doc, method):
                 timeout=5
             )
         except Exception as e:
-            frappe.log_error(f"Failed to trigger QBO creation: {e}", "QBO Sync Error")
-    elif doc.custom_create_customer_in_qbo == 1 and not doc.custom_camp_link:
-        # Use DB write to avoid save loop
-        frappe.db.set_value("Customer", doc.name, "custom_qbo_sync_status", "Missing Camp Link")
-    else:
-        frappe.db.set_value("Customer", doc.name, "custom_create_customer_in_qbo", 0)
+            frappe.log_error(f"Failed to trigger QBO creation for {doc.name}: {e}", "QBO Sync Error")
+
 
 def customer_discount_update(doc, method):
     # Get all Customers linked to this Camp
