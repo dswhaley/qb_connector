@@ -34,7 +34,7 @@ venv.bak/
 #Specific files
 ts_qbo_client/src/QBO_ID_Scripts/payment_method_map.json
 ts_qbo_client/src/QBO_ID_Scripts/account_id_map.json
-
+ts_qbo_client/src/QBO_ID_Scripts/customer_type_id_map.json
 # Dependency directories
 node_modules/
 jspm_packages/
