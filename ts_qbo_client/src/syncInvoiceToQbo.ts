@@ -5,7 +5,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const salesTaxID = process.env.SALES_TAX_ID;
-
+const discountID = process.env.DISCOUNT_ID;
 interface QboInvoiceResponse {
   Invoice?: {
     Id: string;
@@ -24,6 +24,13 @@ async function main() {
     const invoice = await frappe.getDoc<any>("Sales Invoice", invoiceName);
     const customer = await frappe.getDoc<any>("Customer", invoice.customer);
 
+    const addressParts = customer.custom_billing_address.split(',').map((p: string) => p.trim());
+    const state = addressParts[2];
+    const stateTaxability = await getStateTaxability(state);
+    if(stateTaxability === null){
+      throw new Error(`❌ State ${state} is not a valid state`);
+    }
+
     if (!customer.custom_qbo_customer_id) {
       throw new Error(`❌ Customer ${customer.name} has no QBO ID.`);
     }
@@ -41,7 +48,7 @@ async function main() {
       throw new Error("❌ DISCOUNT_ID is not set in .env");
     }
 
-
+    
     const lineItems = [];
     let taxedDiscountAmount: number = 0;
     let nonTaxedDiscountAmount: number = 0;
@@ -72,30 +79,56 @@ async function main() {
         console.warn(`⚠️ Skipping item '${item.name}' due to invalid amount.`);
         continue;
       }
-
-      const taxCode = item.custom_tax_category === "Taxable" ? "TAX" : "NON";
-      if(taxCode === "TAX"){
-        taxedDiscountAmount +=amount * (discountPercentage / 100);
+      
+      if(stateTaxability){
+        let taxCode;
+        if(item.custom_tax_category === "Taxable"){
+          taxCode = "TAX";
+          taxedDiscountAmount += amount * (discountPercentage / 100);
+        } else {
+          nonTaxedDiscountAmount += amount * (discountPercentage / 100);
+          taxCode = "NON";
+        }
+        lineItems.push({
+          DetailType: "SalesItemLineDetail",
+          Amount: line.amount,
+          SalesItemLineDetail: {
+            ItemRef: { value: item.custom_qbo_item_id },
+            Qty: line.qty,
+            UnitPrice: unitPrice,
+            TaxCodeRef: {value: taxCode},
+          },
+          Description: line.description || item.description || undefined,
+        });
       } else {
-        nonTaxedDiscountAmount += line.amount * (discountPercentage / 100);
+        console.log("We got here and we shouldn't have");
+        nonTaxedDiscountAmount += amount * (discountPercentage / 100);
+        lineItems.push({
+          DetailType: "SalesItemLineDetail",
+          Amount: line.amount,
+          SalesItemLineDetail: {
+            ItemRef: { value: item.custom_qbo_item_id },
+            Qty: line.qty,
+            UnitPrice: unitPrice,
+            TaxCodeRef: {value: "NON"},
+          },
+          Description: line.description || item.description || undefined,
+        });
       }
-      if (!["Taxable", "Not Taxable"].includes(item.custom_tax_category)) {
-        console.warn(`⚠️ Invalid custom_tax_category '${item.custom_tax_category}' for item '${item.name}'. Defaulting to NON.`);
-      }
-
-      lineItems.push({
-        DetailType: "SalesItemLineDetail",
-        Amount: line.amount,
-        SalesItemLineDetail: {
-          ItemRef: { value: item.custom_qbo_item_id },
-          Qty: line.qty,
-          UnitPrice: unitPrice,
-          TaxCodeRef: { value: taxCode },
-        },
-        Description: line.description || item.description || undefined,
-      });
     }
-
+    
+    // const discountPercent = parseFloat(invoice.additional_discount_percentage || "0");
+    // if (discountPercent > 0) {
+    //   lineItems.push({
+    //     DetailType: "DiscountLineDetail",
+    //     DiscountLineDetail: {
+    //       PercentBased: true,
+    //       DiscountPercent: discountPercent,
+    //       DiscountAccountRef: { value: discountID, name: "Discounts given" },
+    //     },
+    //     Description: `ERPNext Additional Discount: ${discountPercent.toFixed(2)}%`,
+    //   });
+    // }
 
     if (taxedDiscountAmount > 0) {
       lineItems.push({
@@ -105,7 +138,6 @@ async function main() {
           ItemRef: { value: taxedDiscountID},
           Qty: 1,
           UnitPrice: -taxedDiscountAmount,
-          TaxCodeRef: { value: "TAX" },
         },
         Description: `Disount amount is ${taxedDiscountAmount}`,
       });
@@ -119,7 +151,6 @@ async function main() {
           ItemRef: { value: nonTaxedDiscountID},
           Qty: 1,
           UnitPrice: -nonTaxedDiscountAmount,
-          TaxCodeRef: { value: "NON" },
         },
         Description: `Disount amount is ${nonTaxedDiscountAmount}`,
       });      
@@ -129,13 +160,22 @@ async function main() {
       throw new Error("❌ No valid QBO items to sync.");
     }
 
+    const [name, street, city, statePostal] = customer.custom_billing_address.split(',').map((s: string) => s.trim());
+    const [stateCode, postalCode] = statePostal.split(' ').filter(Boolean);
+
     const qboInvoice: any = {
-      CustomerRef: { value: customer.custom_qbo_customer_id },
+    CustomerRef: { value: customer.custom_qbo_customer_id },
       Line: lineItems,
       TxnDate: invoice.posting_date,
       DueDate: invoice.due_date || undefined,
+      ApplyTaxAfterDiscount: true,
+      ShipAddr: {
+        Line1: street,
+        City: city,
+        CountrySubDivisionCode: stateCode,
+        PostalCode: postalCode,
+      },
     };
-
     if (!invoice.exempt_from_sales_tax) {
       qboInvoice.TxnTaxDetail = {
         TxnTaxCodeRef: { value: salesTaxID },
@@ -144,7 +184,6 @@ async function main() {
     } else {
       qboInvoice.GlobalTaxCalculation = "NotApplicable";
     }
-
     const response = await axios.post(`${baseUrl}/invoice`, qboInvoice, { headers });
     const resData = response.data as QboInvoiceResponse;
 
@@ -174,5 +213,33 @@ async function main() {
     process.exitCode = -1; // Failure
   }
 }
+
+
+async function getStateTaxability(state: string) {
+  try {
+    // Fetch the State Tax Information document (assuming it's a singleton)
+    const stateInfo = await frappe.getDoc<any>("State Tax Information", "State Tax Information");
+    
+    // Convert the state to lowercase to handle case insensitivity
+    state = state.toLowerCase();
+    
+    // Dynamically check if the checkbox corresponding to the state exists
+    const fieldName = state.toLowerCase();  // Example: "california" becomes "california"
+    
+    // Check if the field exists in the document and return its value
+    if (stateInfo.hasOwnProperty(fieldName)) {
+      const isTaxable = stateInfo[fieldName];  // Will be true if checkbox is checked, false otherwise
+      return isTaxable;  // Return true or false
+    } else {
+      return null;  // If the field doesn't exist, return null
+    }
+  } catch (error) {
+    console.error("Error fetching State Tax Information:", error);
+    return null;  // In case of any error
+  }
+}
+
+
+
 
 main();
