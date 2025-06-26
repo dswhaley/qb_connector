@@ -11,51 +11,54 @@ doctype_list_js = {
     "Payment Entry": "public/js/payments_lists.js"
 }
 
+# my_custom_app/hooks.py
+
 fixtures = [
-    # QuickBooks Settings
-    {"doctype": "Property Setter", "filters": [["doc_type", "=", "QuickBooks Settings"]]},
+    # Custom DocTypes
+    {
+        "dt": "DocType",
+        "filters": [
+            ["name", "in", ["State Tax Information", "QuickBooks Settings", "Shipment Tracker"]]
+        ]
+    },
+    
+    # Custom Fields
+    {
+        "dt": "Custom Field",
+        "filters": [["dt", "in", ["Lead", "Customer", "Sales Invoice", "Item", "Tax Category", "Payment Entry", "Sales Order"]]]
+    },
 
-    # Customer
-    {"doctype": "Custom Field", "filters": [["dt", "=", "Customer"]]},
-    {"doctype": "Property Setter", "filters": [["doc_type", "=", "Customer"]]},
+    # Property Setters
+    {
+        "dt": "Property Setter",
+        "filters": [["doc_type", "in", ["Lead", "Customer", "Sales Invoice", "Item", "Tax Category", "Payment Entry", "Sales Order"]]]
+    },
 
-    # Item
-    {"doctype": "Custom Field", "filters": [["dt", "=", "Item"]]},
-    {"doctype": "Property Setter", "filters": [["doc_type", "=", "Item"]]},
+    # Workflow
+    {
+        "dt": "Workflow",
+        "filters": [["document_type", "in", ["Lead", "Customer", "Sales Invoice", "Item", "Tax Category", "Payment Entry", "Sales Order"]]]
+    },
 
-    # Sync QBO Items
-    {"doctype": "Custom Field", "filters": [["name", "like", "Sync QBO Items%"]]},
-    {"doctype": "Property Setter", "filters": [["doc_type", "=", "Sync QBO Items"]]},
-    {"doctype": "DocType", "filters": [["name", "=", "Sync QBO Items"]]},
+    # Print Format (if you have any custom print formats for the above DocTypes)
+    {
+        "dt": "Print Format",
+        "filters": [["doc_type", "in", ["Lead", "Customer", "Sales Invoice", "Item", "Tax Category", "Payment Entry", "Sales Order"]]]
+    },
+
+    # Workspaces
     {
         "doctype": "Workspace",
-        "filters": [["name", "in", ["Stock", "Shipments"]]]
-    },
-    {
-        "doctype": "Custom Field",
-        "filters": [
-            ["dt", "in", ["Project", "Sales Order"]]
-        ]
-    }, 
-        {
-        "doctype": "DocType",
-        "filters": [["name", "=", "Shipment Tracker"]]
-    },
-    {
-        "doctype": "Custom Field",
-        "filters": [["dt", "=", "Shipment Tracker"]]
-    },
-    {
-        "doctype": "Property Setter",
-        "filters": [["doc_type", "=", "Shipment Tracker"]]
+        "filters": [["name", "in", ["Shipments", "Taxes"]]]
     },
 
-    # Tax-related doctypes
-    "Item Tax Template",
-    "Sales Taxes and Charges Template",
-    "Tax Rule",
-    "Tax Category",
+    # Tax Category Entries
+    {
+        "doctype": "Tax Category",
+        "filters": [["name", "in", ["Taxable", "Not Taxable"]]]  # You can specify specific tax categories or leave this broad
+    }
 ]
+
 
 
 
