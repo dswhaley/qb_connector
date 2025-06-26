@@ -51,7 +51,6 @@ export async function createCustomerInQbo(customerName: string): Promise<void> {
     missing.push('Email');
   }
 
-  // ✅ Phone
   if (isFilled(customer.custom_phone)) {
     qboCustomer.PrimaryPhone = { FreeFormNumber: customer.custom_phone.trim() };
   } else {
@@ -87,6 +86,12 @@ export async function createCustomerInQbo(customerName: string): Promise<void> {
     missing.push('Address');
   }
 
+  if (customer.custom_tax_status === "Exempt") {
+    qboCustomer.Taxable = false;
+  }
+
+
+
   // ✅ Sync Status
   let syncStatus = 'Synced';
   if (missing.length === 1) {
@@ -101,7 +106,7 @@ export async function createCustomerInQbo(customerName: string): Promise<void> {
       custom_qbo_sync_status: syncStatus,
       custom_create_customer_in_qbo: 0,
     });
-
+    console.warn(`❗ Missing fields: ${missing.join(', ')}`);
     console.warn(`⚠️ Skipped QBO creation for ${customer.customer_name}: ${syncStatus}`);
     return;
   }
@@ -145,4 +150,16 @@ export async function createCustomerInQbo(customerName: string): Promise<void> {
     }
     throw error;
   }
+}
+
+if (require.main === module) {
+  const name = process.argv[2];
+  if (!name) {
+    console.error("❌ Please provide a customer name");
+    process.exit(1);
+  }
+
+  createCustomerInQbo(name).catch((err) => {
+    console.error("❌ Unhandled error:", err);
+  });
 }
