@@ -31,13 +31,21 @@ async function main() {
     const baseUrl = await getQboBaseUrl();
     const headers = await getQboAuthHeaders();
 
-    const discountID = process.env.DISCOUNT_ID;
+    const taxedDiscountID = process.env.TAXED_DISCOUNT_ID;
+    const nonTaxedDiscountID = process.env.NON_TAXED_DISCOUNT_ID
 
-    if (!discountID) {
+    if (!taxedDiscountID) {
+      throw new Error("❌ DISCOUNT_ID is not set in .env");
+    }
+    if (!nonTaxedDiscountID) {
       throw new Error("❌ DISCOUNT_ID is not set in .env");
     }
 
+
     const lineItems = [];
+    let taxedDiscountAmount: number = 0;
+    let nonTaxedDiscountAmount: number = 0;
+    const discountPercentage = parseFloat(invoice.additional_discount_percentage || 0);
 
     for (const line of invoice.items) {
       const item = await frappe.getDoc<any>("Item", line.item_code);
@@ -59,7 +67,18 @@ async function main() {
         ? prices[0].price_list_rate
         : line.rate || line.amount / line.qty || 0;
 
+      const amount = line.amount || line.rate * line.qty || 0;
+      if (amount <= 0) {
+        console.warn(`⚠️ Skipping item '${item.name}' due to invalid amount.`);
+        continue;
+      }
+
       const taxCode = item.custom_tax_category === "Taxable" ? "TAX" : "NON";
+      if(taxCode === "TAX"){
+        taxedDiscountAmount +=amount * (discountPercentage / 100);
+      } else {
+        nonTaxedDiscountAmount += line.amount * (discountPercentage / 100);
+      }
       if (!["Taxable", "Not Taxable"].includes(item.custom_tax_category)) {
         console.warn(`⚠️ Invalid custom_tax_category '${item.custom_tax_category}' for item '${item.name}'. Defaulting to NON.`);
       }
@@ -77,17 +96,33 @@ async function main() {
       });
     }
 
-    const discountPercent = parseFloat(invoice.additional_discount_percentage || "0");
-    if (discountPercent > 0) {
+
+    if (taxedDiscountAmount > 0) {
       lineItems.push({
-        DetailType: "DiscountLineDetail",
-        DiscountLineDetail: {
-          PercentBased: true,
-          DiscountPercent: discountPercent,
-          DiscountAccountRef: { value: discountID, name: "Discounts given" },
+        DetailType: "SalesItemLineDetail",
+        Amount: -taxedDiscountAmount,
+        SalesItemLineDetail: {
+          ItemRef: { value: taxedDiscountID},
+          Qty: 1,
+          UnitPrice: -taxedDiscountAmount,
+          TaxCodeRef: { value: "TAX" },
         },
-        Description: `ERPNext Additional Discount: ${discountPercent.toFixed(2)}%`,
+        Description: `Disount amount is ${taxedDiscountAmount}`,
       });
+    }
+
+    if(nonTaxedDiscountAmount > 0){
+      lineItems.push({
+        DetailType: "SalesItemLineDetail",
+        Amount: -nonTaxedDiscountAmount,
+        SalesItemLineDetail: {
+          ItemRef: { value: nonTaxedDiscountID},
+          Qty: 1,
+          UnitPrice: -nonTaxedDiscountAmount,
+          TaxCodeRef: { value: "NON" },
+        },
+        Description: `Disount amount is ${nonTaxedDiscountAmount}`,
+      });      
     }
 
     if (lineItems.length === 0) {
@@ -130,8 +165,13 @@ async function main() {
       process.exitCode = -1;  // Failure
     }
   } catch (err: any) {
-    console.error(`❌ Exception during invoice sync: ${err.message}`);
-    process.exitCode = -1;  // Failure
+    console.error("❌ Exception during invoice sync:", err.message || err);
+
+    if (err.response?.data) {
+      console.error("❗ QBO Error Response:", JSON.stringify(err.response.data, null, 2));
+    }
+
+    process.exitCode = -1; // Failure
   }
 }
 
