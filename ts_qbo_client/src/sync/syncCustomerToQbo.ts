@@ -13,11 +13,13 @@ interface Customer {
   custom_qbo_last_synced_at?: string;
   custom_customer_exists_in_qbo?: number;
   custom_billing_address?: string;
+  custom_tax_status?: string;
 }
 
 interface QboCustomer {
   Id: string;
   DisplayName?: string;
+  Taxable?: boolean;
   BillAddr?: {
     Line1?: string;
     City?: string;
@@ -37,8 +39,17 @@ function toMariaDBDateTimeString(date: Date): string {
   return date.toISOString().slice(0, 19).replace('T', ' ');
 }
 
-export async function syncCustomerToQbo(customerName: string): Promise<'matched' | 'not_found'> {
+export async function syncCustomerToQbo(customerName: string): Promise<'matched' | 'not_found' | "skipped"> {
   const customer = await frappe.getDoc<Customer>('Customer', customerName);
+
+  if (customer.custom_tax_status?.toLowerCase() === 'pending') {
+    console.warn(`⏭️ Skipping ${customer.name}: tax status is 'Pending'`);
+    customer.custom_qbo_sync_status = "Tax Status Unknown";
+    await frappe.updateDoc('Customer', customer);
+    return "skipped";
+  }
+
+
 
   if (customer.custom_qbo_customer_id && customer.custom_qbo_sync_status === 'Synced') {
     console.log(`✅ Customer ${customer.name} is already synced to QBO.`);
@@ -108,6 +119,20 @@ export async function syncCustomerToQbo(customerName: string): Promise<'matched'
     }
 
     if (match) {
+      const frappeTaxStatus = customer.custom_tax_status?.toLowerCase();
+      const qboTaxable = match.Taxable;
+
+      const isTaxStatusCompatible =
+        (frappeTaxStatus === 'exempt' && qboTaxable === false) ||
+        (frappeTaxStatus === 'taxed' && qboTaxable === true);
+
+      if (!isTaxStatusCompatible) {
+        console.warn(`❌ Tax status mismatch for ${customer.name}. Frappe: '${frappeTaxStatus}', QBO: '${qboTaxable}'`);
+        customer.custom_qbo_sync_status = "Tax Status Mismatch";
+        await frappe.updateDoc('Customer', customer);
+        return "skipped";
+      }
+
       customer.custom_qbo_customer_id = match.Id;
       customer.custom_qbo_sync_status = 'Synced';
       customer.custom_qbo_last_synced_at = toMariaDBDateTimeString(new Date());
@@ -115,6 +140,7 @@ export async function syncCustomerToQbo(customerName: string): Promise<'matched'
       await frappe.updateDoc('Customer', customer);
       console.log(`✅ Linked ${customer.name} to QBO Customer ID ${match.Id}`);
       return 'matched';
+
     } else {
       console.log(`🔍 No matching QBO customer found for ${customer.name}`);
       return 'not_found';
