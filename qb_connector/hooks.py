@@ -72,7 +72,7 @@ doc_events = {
     "Customer": {
         "on_update": "qb_connector.api.customer_update_handler"
     },
-        "Item": {
+    "Item": {
         "before_save": "qb_connector.qbo_hooks.sync_qbo_cost_on_update"#,
         #"after_insert": "qb_connector.qbo_hooks.sync_item_to_qbo"
     },
@@ -80,6 +80,7 @@ doc_events = {
         "before_save": "qb_connector.qbo_hooks.sync_qbo_price_on_update"
     },
     "Sales Invoice": {
+        "before_save": "qb_connector.invoice_hooks.use_tax_status",
         "on_submit": [
             "qb_connector.invoice_hooks.sync_sales_invoice_to_qbo",
             "qb_connector.shipment_hooks.link_invoice_to_tracker"
