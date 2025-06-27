@@ -21,10 +21,7 @@ fixtures = [
             ["name", "in", [
                 "State Tax Information", 
                 "QuickBooks Settings", 
-                "Shipment Tracker", 
-                "Order Tracker", 
-                "QuickBooks Connector", 
-                "Qb Connector"
+                "Shipment Tracker"
             ]]
         ]
     },
@@ -103,7 +100,7 @@ fixtures = [
         "filters": [["module_name", "in", [
             "Order Tracker", 
             "QuickBooks Connector", 
-            "Qb Connector"
+            "QB"
         ]]]
     }
 ]
