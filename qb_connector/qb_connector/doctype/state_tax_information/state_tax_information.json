@@ -1,0 +1,392 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-06-26 10:43:27.475573",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "states_section",
+  "al",
+  "ak",
+  "az",
+  "ar",
+  "ca",
+  "co",
+  "ct",
+  "de",
+  "fl",
+  "ga",
+  "hi",
+  "id",
+  "il",
+  "in",
+  "ia",
+  "ks",
+  "ky",
+  "la",
+  "me",
+  "md",
+  "ma",
+  "mi",
+  "mn",
+  "ms",
+  "mo",
+  "mt",
+  "ne",
+  "nv",
+  "nh",
+  "nj",
+  "nm",
+  "new_york",
+  "nc",
+  "nd",
+  "oh",
+  "ok",
+  "or",
+  "pa",
+  "ri",
+  "sc",
+  "sd",
+  "tn",
+  "tx",
+  "ut",
+  "vt",
+  "va",
+  "wa",
+  "wv",
+  "wi",
+  "wy"
+ ],
+ "fields": [
+  {
+   "fieldname": "states_section",
+   "fieldtype": "Section Break",
+   "label": "States We Collect Taxes In"
+  },
+  {
+   "default": "0",
+   "fieldname": "al",
+   "fieldtype": "Check",
+   "label": "Alabama"
+  },
+  {
+   "default": "0",
+   "fieldname": "ak",
+   "fieldtype": "Check",
+   "label": "Alaska"
+  },
+  {
+   "default": "0",
+   "fieldname": "az",
+   "fieldtype": "Check",
+   "label": "Arizona"
+  },
+  {
+   "default": "0",
+   "fieldname": "ar",
+   "fieldtype": "Check",
+   "label": "Arkansas"
+  },
+  {
+   "default": "0",
+   "fieldname": "ca",
+   "fieldtype": "Check",
+   "label": "California"
+  },
+  {
+   "default": "0",
+   "fieldname": "co",
+   "fieldtype": "Check",
+   "label": "Colorado"
+  },
+  {
+   "default": "0",
+   "fieldname": "ct",
+   "fieldtype": "Check",
+   "label": "Connecticut"
+  },
+  {
+   "default": "0",
+   "fieldname": "de",
+   "fieldtype": "Check",
+   "label": "Delaware"
+  },
+  {
+   "default": "0",
+   "fieldname": "fl",
+   "fieldtype": "Check",
+   "label": "Florida"
+  },
+  {
+   "default": "0",
+   "fieldname": "ga",
+   "fieldtype": "Check",
+   "label": "Georgia"
+  },
+  {
+   "default": "0",
+   "fieldname": "hi",
+   "fieldtype": "Check",
+   "label": "Hawaii"
+  },
+  {
+   "default": "0",
+   "fieldname": "id",
+   "fieldtype": "Check",
+   "label": "Idaho"
+  },
+  {
+   "default": "0",
+   "fieldname": "il",
+   "fieldtype": "Check",
+   "label": "Illinois"
+  },
+  {
+   "default": "0",
+   "fieldname": "in",
+   "fieldtype": "Check",
+   "label": "Indiana"
+  },
+  {
+   "default": "0",
+   "fieldname": "ia",
+   "fieldtype": "Check",
+   "label": "Iowa"
+  },
+  {
+   "default": "0",
+   "fieldname": "ks",
+   "fieldtype": "Check",
+   "label": "Kansas"
+  },
+  {
+   "default": "0",
+   "fieldname": "ky",
+   "fieldtype": "Check",
+   "label": "Kentucky"
+  },
+  {
+   "default": "0",
+   "fieldname": "la",
+   "fieldtype": "Check",
+   "label": "Louisiana"
+  },
+  {
+   "default": "0",
+   "fieldname": "me",
+   "fieldtype": "Check",
+   "label": "Maine"
+  },
+  {
+   "default": "0",
+   "fieldname": "md",
+   "fieldtype": "Check",
+   "label": "Maryland"
+  },
+  {
+   "default": "0",
+   "fieldname": "ma",
+   "fieldtype": "Check",
+   "label": "Massachusetts"
+  },
+  {
+   "default": "0",
+   "fieldname": "mi",
+   "fieldtype": "Check",
+   "label": "Michigan"
+  },
+  {
+   "default": "0",
+   "fieldname": "mn",
+   "fieldtype": "Check",
+   "label": "Minnesota"
+  },
+  {
+   "default": "0",
+   "fieldname": "ms",
+   "fieldtype": "Check",
+   "label": "Mississippi"
+  },
+  {
+   "default": "0",
+   "fieldname": "mo",
+   "fieldtype": "Check",
+   "label": "Missouri"
+  },
+  {
+   "default": "0",
+   "fieldname": "mt",
+   "fieldtype": "Check",
+   "label": "Montana"
+  },
+  {
+   "default": "0",
+   "fieldname": "ne",
+   "fieldtype": "Check",
+   "label": "Nebraska"
+  },
+  {
+   "default": "0",
+   "fieldname": "nv",
+   "fieldtype": "Check",
+   "label": "Nevada"
+  },
+  {
+   "default": "0",
+   "fieldname": "nh",
+   "fieldtype": "Check",
+   "label": "New Hampshire"
+  },
+  {
+   "default": "0",
+   "fieldname": "nj",
+   "fieldtype": "Check",
+   "label": "New Jersey"
+  },
+  {
+   "default": "0",
+   "fieldname": "nm",
+   "fieldtype": "Check",
+   "label": "New Mexico"
+  },
+  {
+   "default": "0",
+   "fieldname": "new_york",
+   "fieldtype": "Check",
+   "label": "New York"
+  },
+  {
+   "default": "0",
+   "fieldname": "nc",
+   "fieldtype": "Check",
+   "label": "North Carolina"
+  },
+  {
+   "default": "0",
+   "fieldname": "nd",
+   "fieldtype": "Check",
+   "label": "North Dakota"
+  },
+  {
+   "default": "0",
+   "fieldname": "oh",
+   "fieldtype": "Check",
+   "label": "Ohio"
+  },
+  {
+   "default": "0",
+   "fieldname": "ok",
+   "fieldtype": "Check",
+   "label": "Oklahoma"
+  },
+  {
+   "default": "0",
+   "fieldname": "or",
+   "fieldtype": "Check",
+   "label": "Oregon"
+  },
+  {
+   "default": "0",
+   "fieldname": "pa",
+   "fieldtype": "Check",
+   "label": "Pennsylvania"
+  },
+  {
+   "default": "0",
+   "fieldname": "ri",
+   "fieldtype": "Check",
+   "label": "Rhode Island"
+  },
+  {
+   "default": "0",
+   "fieldname": "sc",
+   "fieldtype": "Check",
+   "label": "South Carolina"
+  },
+  {
+   "default": "0",
+   "fieldname": "sd",
+   "fieldtype": "Check",
+   "label": "South Dakota"
+  },
+  {
+   "default": "0",
+   "fieldname": "tn",
+   "fieldtype": "Check",
+   "label": "Tennessee"
+  },
+  {
+   "default": "0",
+   "fieldname": "tx",
+   "fieldtype": "Check",
+   "label": "Texas"
+  },
+  {
+   "default": "0",
+   "fieldname": "ut",
+   "fieldtype": "Check",
+   "label": "Utah"
+  },
+  {
+   "default": "0",
+   "fieldname": "vt",
+   "fieldtype": "Check",
+   "label": "Vermont"
+  },
+  {
+   "default": "0",
+   "fieldname": "va",
+   "fieldtype": "Check",
+   "label": "Virginia"
+  },
+  {
+   "default": "0",
+   "fieldname": "wa",
+   "fieldtype": "Check",
+   "label": "Washington"
+  },
+  {
+   "default": "0",
+   "fieldname": "wv",
+   "fieldtype": "Check",
+   "label": "West Virginia"
+  },
+  {
+   "default": "0",
+   "fieldname": "wi",
+   "fieldtype": "Check",
+   "label": "Wisconsin"
+  },
+  {
+   "default": "0",
+   "fieldname": "wy",
+   "fieldtype": "Check",
+   "label": "Wyoming"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-06-26 10:59:22.313705",
+ "modified_by": "Administrator",
+ "module": "Qb Connector",
+ "name": "State Tax Information",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}
