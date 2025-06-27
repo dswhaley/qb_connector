@@ -18,32 +18,71 @@ fixtures = [
     {
         "dt": "DocType",
         "filters": [
-            ["name", "in", ["State Tax Information", "QuickBooks Settings", "Shipment Tracker"]]
+            ["name", "in", [
+                "State Tax Information", 
+                "QuickBooks Settings", 
+                "Shipment Tracker", 
+                "Order Tracker", 
+                "QuickBooks Connector", 
+                "Qb Connector"
+            ]]
         ]
     },
     
     # Custom Fields
     {
         "dt": "Custom Field",
-        "filters": [["dt", "in", ["Lead", "Customer", "Sales Invoice", "Item", "Tax Category", "Payment Entry", "Sales Order"]]]
+        "filters": [["dt", "in", [
+            "Lead", 
+            "Customer", 
+            "Sales Invoice", 
+            "Item", 
+            "Tax Category", 
+            "Payment Entry", 
+            "Sales Order"
+        ]]]
     },
 
     # Property Setters
     {
         "dt": "Property Setter",
-        "filters": [["doc_type", "in", ["Lead", "Customer", "Sales Invoice", "Item", "Tax Category", "Payment Entry", "Sales Order"]]]
+        "filters": [["doc_type", "in", [
+            "Lead", 
+            "Customer", 
+            "Sales Invoice", 
+            "Item", 
+            "Tax Category", 
+            "Payment Entry", 
+            "Sales Order"
+        ]]]
     },
 
     # Workflow
     {
         "dt": "Workflow",
-        "filters": [["document_type", "in", ["Lead", "Customer", "Sales Invoice", "Item", "Tax Category", "Payment Entry", "Sales Order"]]]
+        "filters": [["document_type", "in", [
+            "Lead", 
+            "Customer", 
+            "Sales Invoice", 
+            "Item", 
+            "Tax Category", 
+            "Payment Entry", 
+            "Sales Order"
+        ]]]
     },
 
     # Print Format (if you have any custom print formats for the above DocTypes)
     {
         "dt": "Print Format",
-        "filters": [["doc_type", "in", ["Lead", "Customer", "Sales Invoice", "Item", "Tax Category", "Payment Entry", "Sales Order"]]]
+        "filters": [["doc_type", "in", [
+            "Lead", 
+            "Customer", 
+            "Sales Invoice", 
+            "Item", 
+            "Tax Category", 
+            "Payment Entry", 
+            "Sales Order"
+        ]]]
     },
 
     # Workspaces
@@ -55,7 +94,17 @@ fixtures = [
     # Tax Category Entries
     {
         "doctype": "Tax Category",
-        "filters": [["name", "in", ["Taxable", "Not Taxable"]]]  # You can specify specific tax categories or leave this broad
+        "filters": [["name", "in", ["Standard Tax", "Reduced Tax", "Exempt Tax"]]]  # Modify to fit your tax categories
+    },
+
+    # Modules
+    {
+        "doctype": "Module Def",
+        "filters": [["module_name", "in", [
+            "Order Tracker", 
+            "QuickBooks Connector", 
+            "Qb Connector"
+        ]]]
     }
 ]
 
