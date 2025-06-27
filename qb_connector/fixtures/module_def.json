@@ -1,0 +1,35 @@
+[
+ {
+  "app_name": "frappe",
+  "custom": 1,
+  "docstatus": 0,
+  "doctype": "Module Def",
+  "modified": "2025-06-03 09:58:03.582816",
+  "module_name": "QuickBooks Connector",
+  "name": "QuickBooks Connector",
+  "package": null,
+  "restrict_to_domain": null
+ },
+ {
+  "app_name": "qb_connector",
+  "custom": 0,
+  "docstatus": 0,
+  "doctype": "Module Def",
+  "modified": "2025-06-03 19:06:26.609176",
+  "module_name": "Qb Connector",
+  "name": "Qb Connector",
+  "package": null,
+  "restrict_to_domain": null
+ },
+ {
+  "app_name": "erpnext",
+  "custom": 0,
+  "docstatus": 0,
+  "doctype": "Module Def",
+  "modified": "2025-06-17 10:37:48.032596",
+  "module_name": "Order Tracker",
+  "name": "Order Tracker",
+  "package": null,
+  "restrict_to_domain": null
+ }
+]
