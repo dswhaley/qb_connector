@@ -91,7 +91,7 @@ fixtures = [
     # Tax Category Entries
     {
         "doctype": "Tax Category",
-        "filters": [["name", "in", ["Standard Tax", "Reduced Tax", "Exempt Tax"]]]  # Modify to fit your tax categories
+        "filters": [["name", "in", ["Taxable", "Not Taxable"]]]  # Modify to fit your tax categories
     },
 
     # Modules
