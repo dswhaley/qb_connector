@@ -1,16 +1,5 @@
 [
  {
-  "app_name": "frappe",
-  "custom": 1,
-  "docstatus": 0,
-  "doctype": "Module Def",
-  "modified": "2025-06-03 09:58:03.582816",
-  "module_name": "QuickBooks Connector",
-  "name": "QuickBooks Connector",
-  "package": null,
-  "restrict_to_domain": null
- },
- {
   "app_name": "qb_connector",
   "custom": 0,
   "docstatus": 0,
