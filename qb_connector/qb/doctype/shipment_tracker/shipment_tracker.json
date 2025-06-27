@@ -1,0 +1,185 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "prompt",
+ "creation": "2025-06-17 10:38:13.077950",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "info_section",
+  "shipment_name",
+  "date_needed",
+  "column_break_ihaz",
+  "shipment_status",
+  "sales_order_section",
+  "sales_order",
+  "column_break_ljjt",
+  "sales_order_date",
+  "sales_invocie_section",
+  "sales_invoice",
+  "column_break_qknj",
+  "invoice_date",
+  "payment_section",
+  "payment_entry",
+  "column_break_duov",
+  "payment_date",
+  "camp_info_section",
+  "id",
+  "camp",
+  "shipping_line_1",
+  "shipping_line_2",
+  "shipping_line_3"
+ ],
+ "fields": [
+  {
+   "fieldname": "info_section",
+   "fieldtype": "Section Break",
+   "label": "Info"
+  },
+  {
+   "fieldname": "shipment_name",
+   "fieldtype": "Data",
+   "label": "Shipment Name"
+  },
+  {
+   "fieldname": "date_needed",
+   "fieldtype": "Date",
+   "label": "Date Needed"
+  },
+  {
+   "fieldname": "column_break_ihaz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "shipment_status",
+   "fieldtype": "Select",
+   "label": "Shipment Status",
+   "options": "Sales Order Made\nInvoice Sent\nPayment Received\nProduct Ordered\nProduct Shipped\nReceived"
+  },
+  {
+   "fieldname": "sales_order_section",
+   "fieldtype": "Section Break",
+   "label": "Sales Order"
+  },
+  {
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "label": "Sales Order",
+   "options": "Sales Order"
+  },
+  {
+   "fieldname": "column_break_ljjt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "sales_order.transaction_date",
+   "fieldname": "sales_order_date",
+   "fieldtype": "Data",
+   "label": "Sales Order Date"
+  },
+  {
+   "fieldname": "sales_invocie_section",
+   "fieldtype": "Section Break",
+   "label": "Sales Invocie"
+  },
+  {
+   "fieldname": "sales_invoice",
+   "fieldtype": "Link",
+   "label": "Sales Invoice",
+   "options": "Sales Invoice"
+  },
+  {
+   "fieldname": "column_break_qknj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "sales_invoice.posting_date",
+   "fieldname": "invoice_date",
+   "fieldtype": "Date",
+   "label": "Invoice Date"
+  },
+  {
+   "fieldname": "payment_section",
+   "fieldtype": "Section Break",
+   "label": "Payment"
+  },
+  {
+   "fieldname": "payment_entry",
+   "fieldtype": "Link",
+   "label": "Payment Entry",
+   "options": "Payment Entry"
+  },
+  {
+   "fieldname": "column_break_duov",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "payment_entry.posting_date",
+   "fieldname": "payment_date",
+   "fieldtype": "Date",
+   "label": "Payment Date"
+  },
+  {
+   "fieldname": "camp_info_section",
+   "fieldtype": "Section Break",
+   "label": "Camp info"
+  },
+  {
+   "fetch_from": "camp.organization_id",
+   "fieldname": "id",
+   "fieldtype": "Data",
+   "label": "ID"
+  },
+  {
+   "fieldname": "camp",
+   "fieldtype": "Link",
+   "label": "Camp",
+   "options": "Camp"
+  },
+  {
+   "fetch_from": "camp.shipping_address_1",
+   "fieldname": "shipping_line_1",
+   "fieldtype": "Data",
+   "label": "Shipping Line 1"
+  },
+  {
+   "fetch_from": "camp.shipping_address_2",
+   "fieldname": "shipping_line_2",
+   "fieldtype": "Data",
+   "label": "Shipping Line 2"
+  },
+  {
+   "fetch_from": "camp.shipping_address_3",
+   "fieldname": "shipping_line_3",
+   "fieldtype": "Data",
+   "label": "Shipping Line 3"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-06-27 10:44:35.883888",
+ "modified_by": "Administrator",
+ "module": "QB",
+ "name": "Shipment Tracker",
+ "naming_rule": "Set by user",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}
