@@ -99,7 +99,6 @@ fixtures = [
         "doctype": "Module Def",
         "filters": [["module_name", "in", [
             "Order Tracker", 
-            "QuickBooks Connector", 
             "QB"
         ]]]
     }
