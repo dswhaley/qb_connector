@@ -1,3 +1,2 @@
-Qb Connector
 QB
 Order Tracker
