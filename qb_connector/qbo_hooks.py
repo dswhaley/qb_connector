@@ -56,6 +56,8 @@ def mark_qbo_sync_status(doctype: str, docname: str, status: str, invoice_id: st
         doc = frappe.get_doc(doctype, docname)
         doc.db_set("custom_last_synced_at", now_datetime())
         doc.db_set("custom_sync_status", status)
+        if status != "Synced":
+            frappe.msgprint(f"Failed to Sync: {status}")
         
         # Only update the custom_qbo_sales_invoice_id if invoice_id is provided
         if invoice_id:
