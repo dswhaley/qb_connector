@@ -101,7 +101,6 @@ async function main() {
           Description: line.description || item.description || undefined,
         });
       } else {
-        console.log("We got here and we shouldn't have");
         nonTaxedDiscountAmount += amount * (discountPercentage / 100);
         lineItems.push({
           DetailType: "SalesItemLineDetail",
