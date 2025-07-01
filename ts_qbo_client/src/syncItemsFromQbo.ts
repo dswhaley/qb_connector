@@ -110,11 +110,6 @@ export async function syncItemsFromQbo(): Promise<void> {
         custom_qbo_last_synced_at: now,
         custom_skip_qbo_sync: 1,
         custom_tax_category: item.Taxable ? 'Taxable' : 'Not Taxable',
-        taxes: [
-          {
-            item_tax_template: taxTemplate,
-          },
-        ],
       };
 
       console.log(`📌 Creating Item '${itemCode}' with tax_category = ${docPayload.custom_tax_category}`);
