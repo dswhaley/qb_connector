@@ -15,6 +15,10 @@ def use_tax_status(doc, method):
         print(f"Tax Status: {customer.custom_tax_status}\n State Status: {get_state_tax_status(customer)}")
         if customer.custom_tax_status == "Exempt" or get_state_tax_status(customer) == 0:
             doc.exempt_from_sales_tax = 1
+            doc.taxes_and_charges = None
+            doc.set("taxes", [])
+            doc.total_taxes_and_charges = 0
+
         else:
             doc.exempt_from_sales_tax = 0
 
