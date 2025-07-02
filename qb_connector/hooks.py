@@ -139,8 +139,7 @@ doc_events = {
     },
     "Sales Order": {
         "on_submit": "qb_connector.shipment_hooks.create_shipment_tracker",
-        "validate": "qb_connector.sales_order_hooks.sales_order_hooks"
-
+        "validate": "qb_connector.sales_order_hooks.sales_order_hooks"      
     },
         "Payment Entry": {
             "on_submit":[
