@@ -75,5 +75,7 @@ def check_negotiated_items(doc, method):
 def search_order_and_update_price(order, target, new_price):
     for item in order.items:
         if item.item_code == target:
+            if(item.rate != new_price):
                 order.custom_ignore_discount = 1                        
                 item.rate = new_price
+                frappe.msgprint(f"{item.item_code} price changed to the negotiated price: ${new_price}")
