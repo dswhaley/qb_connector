@@ -124,7 +124,7 @@ def customer_discount_update(doc, method):
 
     for cust in customers:
         customer = frappe.get_doc("Customer", cust["name"])
-        customer.custom_discount_ = doc.discount
+        customer.custom_discount_ = doc.association_discount
         customer.save()
-        print(f"✅ Updated Customer {customer.name} with new discount: {doc.discount}")
+        print(f"✅ Updated Customer {customer.name} with new discount: {doc.association_discount}")
 
