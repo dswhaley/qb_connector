@@ -19,26 +19,33 @@ def validate_customer_discount(doc, method):
 
 # ========== Dynamic Discount Logic ==========
 def apply_dynamic_discount(doc, method):
-    customer_name = doc.customer
-    if not customer_name:
-        return
+    if not doc.custom_ignore_discount:
+        customer_name = doc.customer
+        if not customer_name:
+            return
 
-    total_qty = doc.total_qty or 0
-    discount_modifier = get_qty_discount_modifier(total_qty)
+        total_qty = doc.total_qty or 0
+        discount_modifier = get_qty_discount_modifier(total_qty)
 
-    customer = frappe.get_doc("Customer", customer_name)
-    base_discount = float(customer.get("custom_discount_") or 0)
+        customer = frappe.get_doc("Customer", customer_name)
+        base_discount = float(customer.get("custom_discount_") or 0)
 
-    total_discount_percentage = base_discount + discount_modifier
+        total_discount_percentage = base_discount + discount_modifier
 
-    # Set standard ERPNext discount fields
-    doc.apply_discount_on = "Net Total"
-    doc.additional_discount_percentage = total_discount_percentage
-    #doc.additional_discount_amount = 0  # Let ERPNext calculate this
+        # Set standard ERPNext discount fields
+        doc.apply_discount_on = "Net Total"
+        doc.additional_discount_percentage = total_discount_percentage
+        #doc.additional_discount_amount = 0  # Let ERPNext calculate this
 
-    doc.calculate_taxes_and_totals()
+        doc.calculate_taxes_and_totals()
 
-    frappe.msgprint(f"✅ Applied total discount of {total_discount_percentage:.2f}%")
+        frappe.msgprint(f"✅ Applied total discount of {total_discount_percentage:.2f}%")
+    else:
+        doc.apply_discount_on = "Net Total"
+        doc.additional_discount_percentage = 0
+        doc.calculate_taxes_and_totals()
+
+        print("Discounting Skipped due to ignore_discount checkbox")
 
 
 def get_qty_discount_modifier(qty):
