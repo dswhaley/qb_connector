@@ -3,6 +3,7 @@ from .discount_hooks import apply_dynamic_discount, get_qty_discount_modifier, v
 
 # ========== Sales Order Hook ==========
 def sales_order_hooks(doc, method):
+    check_negotiated_items(doc, method)
     apply_dynamic_discount(doc, method)
     use_tax_status(doc, method)
 
@@ -43,4 +44,36 @@ def get_state_tax_status(customer):
     else:
         raise ValueError(f"❌ Invalid State: field '{state}' not found in State Tax Information.")
     
+def check_negotiated_items(doc, method):
+    try:
+        customer = frappe.get_doc("Customer", doc.customer)
+        camp = frappe.get_doc("Camp", customer.custom_camp_link)
 
+        if camp.negotiated_wristband:
+            if camp.negotiated_wristband_price:
+                search_order_and_update_price(doc, camp.negotiated_wristband, camp.negotiated_wristband_price)
+            else:
+                frappe.msgprint("Customer has a negotiated wristband, but no negotiated writband price")
+
+        if camp.negotiated_regular_account:
+            if camp.negotiated_regular_account_price:
+                search_order_and_update_price(doc, camp.negotiated_regular_account, camp.negotiated_regular_account_price)
+            else:
+                frappe.msgprint("Customer has a negotiated account, but no negotiated account price")
+
+        if camp.negotiated_staff_account:
+            if camp.negotiated_staff_account_price:
+                search_order_and_update_price(doc, camp.negotiated_staff_account, camp.negotiated_staff_account_price)
+            else:
+                frappe.msgprint("Customer has a negotiated account, but no negotiated account price")
+
+            
+
+    except Exception as e:
+        frappe.msgprint(f"Failed due to: {str(e)}")
+
+def search_order_and_update_price(order, target, new_price):
+    for item in order.items:
+        if item.item_code == target:
+                order.custom_ignore_discount = 1                        
+                item.rate = new_price
