@@ -128,7 +128,7 @@ doc_events = {
         "before_save": "qb_connector.qbo_hooks.sync_qbo_price_on_update"
     },
     "Sales Invoice": {
-        "before_save": "qb_connector.invoice_hooks.use_tax_status",
+        "before_save": "qb_connector.order_hooks.order_hooks",
         "on_submit": [
             "qb_connector.invoice_hooks.sync_sales_invoice_to_qbo",
             "qb_connector.shipment_hooks.link_invoice_to_tracker"
@@ -139,7 +139,7 @@ doc_events = {
     },
     "Sales Order": {
         "on_submit": "qb_connector.shipment_hooks.create_shipment_tracker",
-        "before_save": "qb_connector.sales_order_hooks.sales_order_hooks"      
+        "before_save": "qb_connector.order_hooks.order_hooks"      
     },
         "Payment Entry": {
             "on_submit":[
