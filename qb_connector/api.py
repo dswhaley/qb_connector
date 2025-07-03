@@ -72,44 +72,71 @@ def test_scheduler_job():
 
 
 def customer_update_handler(doc, method):
-    print("HOOK FIRED")
     if doc.custom_create_customer_in_qbo != 1:
-        # Reset trigger if flag was turned off
-        frappe.db.set_value("Customer", doc.name, "custom_create_customer_in_qbo", 0)
+        doc.custom_create_customer_in_qbo = 0
         return
 
     if not doc.custom_camp_link:
-        frappe.db.set_value("Customer", doc.name, "custom_qbo_sync_status", "Missing Camp Link")
-        frappe.db.set_value("Customer", doc.name, "custom_create_customer_in_qbo", 0)
+        doc.custom_qbo_sync_status = "Missing Camp Link"
+        doc.custom_create_customer_in_qbo = 0
+        frappe.msgprint("Cannot Create Customer due to Missing Camp Link")
         return
 
     try:
         camp = frappe.get_doc("Camp", doc.custom_camp_link)
     except Exception as e:
-        print(f"Invalid Camp Link on Customer {doc.name}: {e}", "QBO Sync Error")
+        doc.custom_qbo_sync_status = "Invalid Camp Link"
+        doc.custom_create_customer_in_qbo = 0
         frappe.log_error(f"Invalid Camp Link on Customer {doc.name}: {e}", "QBO Sync Error")
-        frappe.db.set_value("Customer", doc.name, "custom_qbo_sync_status", "Invalid Camp Link")
+        frappe.msgprint(f"Customer: {doc.name} has an invalid Camp Link")
         return
 
     if camp.tax_exempt == "Pending":
-        frappe.db.set_value("Customer", doc.name, "custom_qbo_sync_status", "Tax Status Pending")
-        frappe.db.set_value("Customer", doc.name, "custom_create_customer_in_qbo", 0)
+        doc.custom_qbo_sync_status = "Tax Status Pending"
+        doc.custom_create_customer_in_qbo = 0
+        frappe.msgprint(f"Customer: {doc.name} not created in QBO because 'Tax Status Pending'")
         return
+
     if camp.tax_exempt == "Exempt" and not camp.tax_exemption_number:
-        frappe.db.set_value("Customer", doc.name, "custom_qbo_sync_status", "Missing Tax Exemption Number")
-        frappe.db.set_value("Customer", doc.name, "custom_create_customer_in_qbo", 0)
-        return       
+        doc.custom_qbo_sync_status = "Missing Tax Exemption Number"
+        doc.custom_create_customer_in_qbo = 0
+        frappe.msgprint(f"Customer: {doc.name} not created in QBO because 'Missing Tax Exemption Number'")
+        return
+
+    print(f"Sync Status: {doc.custom_qbo_sync_status}")
     if doc.custom_qbo_sync_status != "Synced":
-        print("WE GOT HERE")
         try:
-            requests.post(
+            response = requests.post(
                 "http://localhost:3000/api/handle-customer-create",
                 json={"customer_name": doc.name},
                 timeout=5
             )
-        except Exception as e:
-            frappe.log_error(f"Failed to trigger QBO creation for {doc.name}: {e}", "QBO Sync Error")
 
+            if response.status_code != 200:
+                doc.custom_qbo_sync_status = f"HTTP {response.status_code}"
+                doc.custom_create_customer_in_qbo = 0
+                frappe.msgprint(f"❌ Failed to sync with QBO (HTTP {response.status_code})")
+                return
+            
+            result = response.json()
+
+            # ✅ Apply returned values to the doc
+            doc.custom_qbo_sync_status = result.get("custom_qbo_sync_status", "Unknown")
+            doc.custom_qbo_customer_id = result.get("custom_qbo_customer_id") or ""
+            doc.custom_last_synced_at = result.get("custom_last_synced_at") or ""
+            doc.custom_customer_exists_in_qbo = result.get("custom_customer_exists_in_qbo", 0)
+            doc.custom_create_customer_in_qbo = result.get("custom_create_customer_in_qbo", 0)
+
+            if doc.custom_qbo_sync_status == "Synced":
+                frappe.msgprint(f"✅ Successfully synced {doc.name} to QBO.")
+            else:
+                frappe.msgprint(f"⚠️ QBO Sync Result for {doc.name}: {doc.custom_qbo_sync_status}")
+
+        except Exception as e:
+            doc.custom_qbo_sync_status = "Sync Error"
+            doc.custom_create_customer_in_qbo = 0
+            frappe.log_error(f"Error during QBO sync for {doc.name}: {e}", "QBO Sync Error")
+            frappe.msgprint(f"❌ Exception during QBO sync: {e}")
 
 def customer_discount_update(doc, method):
     # Get all Customers linked to this Camp
