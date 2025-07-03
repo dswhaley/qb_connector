@@ -61,8 +61,8 @@ app.post('/api/handle-customer-create', async (req: Request, res: Response) => {
   }
 
   try {
-    await createCustomerInQbo(customer_name); // ✅ Now it's guaranteed to be a string
-    res.status(200).send(`✅ Customer '${customer_name}' created in QBO`);
+    const result = await createCustomerInQbo(customer_name);
+    res.json(result);
   } catch (error: any) {
     console.error(`❌ Error creating customer '${customer_name}':`, error.message || error);
     res.status(500).send('❌ Failed to create customer in QBO');
