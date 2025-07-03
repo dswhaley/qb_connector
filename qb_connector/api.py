@@ -72,10 +72,10 @@ def test_scheduler_job():
 
 
 def customer_update_handler(doc, method):
-    if doc.custom_create_customer_in_qbo != 1:
+
+    if doc.custom_create_customer_in_qbo == 0:
         doc.custom_create_customer_in_qbo = 0
         return
-
     if not doc.custom_camp_link:
         doc.custom_qbo_sync_status = "Missing Camp Link"
         doc.custom_create_customer_in_qbo = 0
@@ -113,7 +113,6 @@ def customer_update_handler(doc, method):
             )
 
             if response.status_code != 200:
-                doc.custom_qbo_sync_status = f"HTTP {response.status_code}"
                 doc.custom_create_customer_in_qbo = 0
                 frappe.msgprint(f"❌ Failed to sync with QBO (HTTP {response.status_code})")
                 return
@@ -125,7 +124,7 @@ def customer_update_handler(doc, method):
             doc.custom_qbo_customer_id = result.get("custom_qbo_customer_id") or ""
             doc.custom_last_synced_at = result.get("custom_last_synced_at") or ""
             doc.custom_customer_exists_in_qbo = result.get("custom_customer_exists_in_qbo", 0)
-            doc.custom_create_customer_in_qbo = result.get("custom_create_customer_in_qbo", 0)
+            doc.custom_create_customer_in_qbo = 0
 
             if doc.custom_qbo_sync_status == "Synced":
                 frappe.msgprint(f"✅ Successfully synced {doc.name} to QBO.")
@@ -133,10 +132,12 @@ def customer_update_handler(doc, method):
                 frappe.msgprint(f"⚠️ QBO Sync Result for {doc.name}: {doc.custom_qbo_sync_status}")
 
         except Exception as e:
-            doc.custom_qbo_sync_status = "Sync Error"
+            doc.custom_qbo_sync_status = "Failed"
             doc.custom_create_customer_in_qbo = 0
             frappe.log_error(f"Error during QBO sync for {doc.name}: {e}", "QBO Sync Error")
             frappe.msgprint(f"❌ Exception during QBO sync: {e}")
+    else:
+        doc.custom_create_customer_in_qbo = 0
 
 def customer_discount_update(doc, method):
     # Get all Customers linked to this Camp
