@@ -13,11 +13,20 @@ interface QboCreateCustomerResponse {
   time?: string;
 }
 
+interface frappeResponse {
+    name: string;
+    custom_qbo_customer_id: string;
+    custom_qbo_sync_status: string;
+    custom_last_synced_at: string;
+    custom_customer_exists_in_qbo: number;
+    custom_create_customer_in_qbo: number;
+}
+
 function isFilled(str?: string | null): boolean {
   return typeof str === 'string' && str.trim().length > 0;
 }
 
-export async function createCustomerInQbo(customerName: string): Promise<void> {
+export async function createCustomerInQbo(customerName: string): Promise<frappeResponse> {
   const customer = await frappe.getDoc<any>('Customer', customerName);
   const rawSettings = await frappe.getDoc('QuickBooks Settings', 'QuickBooks Settings');
   const settings: QuickBooksSettings = fromFrappe(rawSettings);
@@ -101,14 +110,19 @@ export async function createCustomerInQbo(customerName: string): Promise<void> {
   }
 
   if (syncStatus !== 'Synced') {
-    await frappe.updateDoc('Customer', {
-      name: customer.name,
-      custom_qbo_sync_status: syncStatus,
-      custom_create_customer_in_qbo: 0,
-    });
+    
     console.warn(`❗ Missing fields: ${missing.join(', ')}`);
     console.warn(`⚠️ Skipped QBO creation for ${customer.customer_name}: ${syncStatus}`);
-    return;
+    const responseData: frappeResponse = {
+      name: customer.name,
+      custom_qbo_customer_id: "",
+      custom_last_synced_at: "",
+      custom_qbo_sync_status: syncStatus,
+      custom_customer_exists_in_qbo: 0,
+      custom_create_customer_in_qbo: 0
+    }
+
+    return responseData;
   }
 
   // ✅ POST to QBO
@@ -130,17 +144,15 @@ export async function createCustomerInQbo(customerName: string): Promise<void> {
     if (!created?.Id) {
       throw new Error('❌ QBO responded without a valid Customer ID.');
     }
-
-    await frappe.updateDoc('Customer', {
+    const responseData: frappeResponse = {
       name: customer.name,
       custom_qbo_customer_id: created.Id,
-      custom_qbo_sync_status: 'Synced',
       custom_last_synced_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+      custom_qbo_sync_status: "Synced",
       custom_customer_exists_in_qbo: 1,
-      custom_create_customer_in_qbo: 0,
-    });
-
-    console.log(`✅ Created QBO customer '${customer.customer_name}' with ID ${created.Id}`);
+      custom_create_customer_in_qbo: 0
+    }
+    return responseData;
   } catch (error: any) {
     if (error.response?.data?.Fault) {
       console.error(`❌ Failed to create customer '${customer.customer_name}' in QBO`);
