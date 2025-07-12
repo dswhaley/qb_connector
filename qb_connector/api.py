@@ -25,7 +25,6 @@ def handle_qbo_callback(code=None, realmId=None):
     except requests.exceptions.RequestException as e:
         frappe.log_error(str(e), "QBO Callback Failure")
         frappe.throw(_("Failed to handle QuickBooks callback."))
-
 @frappe.whitelist()
 def refresh_qbo_token():
     frappe.logger().info("🔄 Scheduler: Running refresh_qbo_token")
@@ -72,7 +71,7 @@ def test_scheduler_job():
 
 
 def customer_update_handler(doc, method):
-
+    print(doc.custom_create_customer_in_qbo)
     if doc.custom_create_customer_in_qbo == 0:
         doc.custom_create_customer_in_qbo = 0
         return
@@ -88,6 +87,10 @@ def customer_update_handler(doc, method):
             organization = frappe.get_doc("Camp", doc.custom_camp_link)
         elif doc.custom_other_organization_link:
             organization = frappe.get_doc("Other Organization", doc.custom_other_organization_link)
+        else:
+            frappe.msgprint("Customer not linked to a Camp or an Organization")
+            return
+        
     except Exception as e:
         doc.custom_qbo_sync_status = "Invalid Organization Link"
         doc.custom_create_customer_in_qbo = 0
@@ -127,12 +130,11 @@ def customer_update_handler(doc, method):
             doc.custom_qbo_sync_status = result.get("custom_qbo_sync_status", "Unknown")
             doc.custom_qbo_customer_id = result.get("custom_qbo_customer_id") or ""
             doc.custom_last_synced_at = result.get("custom_last_synced_at") or ""
-            doc.custom_customer_exists_in_qbo = result.get("custom_customer_exists_in_qbo", 0)
 
             if doc.custom_qbo_sync_status == "Synced":
                 frappe.msgprint(f"✅ Successfully synced {doc.name} to QBO.")
-                doc.custom_create_customer_in_qbo = 1
-
+                doc.custom_customer_exists_in_qbo = 1
+                doc.custom_create_customer_in_qbo = 0
             else:
                 frappe.msgprint(f"⚠️ QBO Sync Result for {doc.name}: {doc.custom_qbo_sync_status}")
 
