@@ -31,15 +31,19 @@ def apply_dynamic_discount(doc, method):
         base_discount = float(customer.get("custom_discount_") or 0)
 
         total_discount_percentage = base_discount + discount_modifier
+        
+        if not doc.is_new() and not hasattr(doc, "_original"):
+            doc._original = frappe.get_doc(doc.doctype, doc.name)
+        
+        if (doc.is_new() and not doc.additional_discount_percentage) or (hasattr(doc, "_original") and doc._original.additional_discount_percentage != total_discount_percentage):
+            # Set standard ERPNext discount fields
+            doc.apply_discount_on = "Net Total"
+            doc.additional_discount_percentage = total_discount_percentage
+            #doc.additional_discount_amount = 0  # Let ERPNext calculate this
 
-        # Set standard ERPNext discount fields
-        doc.apply_discount_on = "Net Total"
-        doc.additional_discount_percentage = total_discount_percentage
-        #doc.additional_discount_amount = 0  # Let ERPNext calculate this
+            doc.calculate_taxes_and_totals()
 
-        doc.calculate_taxes_and_totals()
-
-        frappe.msgprint(f"✅ Applied total discount of {total_discount_percentage:.2f}%")
+            frappe.msgprint(f"✅ Applied total discount of {total_discount_percentage:.2f}%")
     else:
         doc.apply_discount_on = "Net Total"
         doc.additional_discount_percentage = 0
