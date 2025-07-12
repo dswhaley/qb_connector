@@ -76,28 +76,32 @@ def customer_update_handler(doc, method):
     if doc.custom_create_customer_in_qbo == 0:
         doc.custom_create_customer_in_qbo = 0
         return
-    if not doc.custom_camp_link:
-        doc.custom_qbo_sync_status = "Missing Camp Link"
+    if not doc.custom_camp_link and not doc.custom_other_organization_link:
+        doc.custom_qbo_sync_status = "Missing Organization Link"
         doc.custom_create_customer_in_qbo = 0
-        frappe.msgprint("Cannot Create Customer due to Missing Camp Link")
+        frappe.msgprint("Cannot Create Customer due to Missing Organization Link")
         return
 
     try:
-        camp = frappe.get_doc("Camp", doc.custom_camp_link)
+        organization = None
+        if(doc.custom_camp_link):
+            organization = frappe.get_doc("Camp", doc.custom_camp_link)
+        elif doc.custom_other_organization_link:
+            organization = frappe.get_doc("Other Organization", doc.custom_other_organization_link)
     except Exception as e:
-        doc.custom_qbo_sync_status = "Invalid Camp Link"
+        doc.custom_qbo_sync_status = "Invalid Organization Link"
         doc.custom_create_customer_in_qbo = 0
-        frappe.log_error(f"Invalid Camp Link on Customer {doc.name}: {e}", "QBO Sync Error")
-        frappe.msgprint(f"Customer: {doc.name} has an invalid Camp Link")
+        frappe.log_error(f"Invalid Organization Link on Customer {doc.name}: {e}", "QBO Sync Error")
+        frappe.msgprint(f"Customer: {doc.name} has an invalid Organizaton Link")
         return
 
-    if camp.tax_exempt == "Pending":
+    if organization.tax_exempt == "Pending":
         doc.custom_qbo_sync_status = "Tax Status Pending"
         doc.custom_create_customer_in_qbo = 0
         frappe.msgprint(f"Customer: {doc.name} not created in QBO because 'Tax Status Pending'")
         return
 
-    if camp.tax_exempt == "Exempt" and not camp.tax_exemption_number:
+    if organization.tax_exempt == "Exempt" and not organization.tax_exemption_number:
         doc.custom_qbo_sync_status = "Missing Tax Exemption Number"
         doc.custom_create_customer_in_qbo = 0
         frappe.msgprint(f"Customer: {doc.name} not created in QBO because 'Missing Tax Exemption Number'")
@@ -124,10 +128,11 @@ def customer_update_handler(doc, method):
             doc.custom_qbo_customer_id = result.get("custom_qbo_customer_id") or ""
             doc.custom_last_synced_at = result.get("custom_last_synced_at") or ""
             doc.custom_customer_exists_in_qbo = result.get("custom_customer_exists_in_qbo", 0)
-            doc.custom_create_customer_in_qbo = 0
 
             if doc.custom_qbo_sync_status == "Synced":
                 frappe.msgprint(f"✅ Successfully synced {doc.name} to QBO.")
+                doc.custom_create_customer_in_qbo = 1
+
             else:
                 frappe.msgprint(f"⚠️ QBO Sync Result for {doc.name}: {doc.custom_qbo_sync_status}")
 
@@ -139,20 +144,19 @@ def customer_update_handler(doc, method):
     else:
         doc.custom_create_customer_in_qbo = 0
 
-def customer_discount_update(doc, method):
-    # Get all Customers linked to this Camp
-    customers = frappe.get_all(
-        "Customer",
-        filters={"custom_camp_link": doc.name},
-        fields=["name"]
-    )
-    if not customers:
-        return
-        
+# def customer_discount_update(doc, method):
+#     # Get all Customers linked to this Camp
+#     customers = frappe.get_all(
+#         "Customer",
+#         filters={"custom_camp_link": doc.name},
+#         fields=["name"]
+#     )
+#     if not customers:
+#         return
 
-    for cust in customers:
-        customer = frappe.get_doc("Customer", cust["name"])
-        customer.custom_discount_ = doc.association_discount
-        customer.save()
-        print(f"✅ Updated Customer {customer.name} with new discount: {doc.association_discount}")
+#     for cust in customers:
+#         customer = frappe.get_doc("Customer", cust["name"])
+#         customer.custom_discount_ = doc.association_discount
+#         customer.save()
+#         print(f"✅ Updated Customer {customer.name} with new discount: {doc.association_discount}")
 
