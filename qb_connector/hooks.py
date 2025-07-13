@@ -133,9 +133,9 @@ doc_events = {
             "qb_connector.shipment_hooks.link_invoice_to_tracker"
         ] 
     },
-    "Camp":{
-        "on_update": "qb_connector.api.customer_discount_update"
-    },
+    # "Camp":{
+    #     "on_update": "qb_connector.api.customer_discount_update"
+    # },
     "Sales Order": {
         "on_submit": "qb_connector.shipment_hooks.create_shipment_tracker",
         "before_save": "qb_connector.order_hooks.order_hooks"      
