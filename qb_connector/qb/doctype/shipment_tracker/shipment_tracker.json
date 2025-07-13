@@ -2,7 +2,7 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "prompt",
- "creation": "2025-06-17 10:38:13.077950",
+ "creation": "2025-07-03 16:38:26.255582",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -24,8 +24,9 @@
   "column_break_duov",
   "payment_date",
   "camp_info_section",
-  "id",
-  "camp",
+  "order_id",
+  "organization_type",
+  "organization",
   "shipping_line_1",
   "shipping_line_2",
   "shipping_line_3"
@@ -125,18 +126,6 @@
    "label": "Camp info"
   },
   {
-   "fetch_from": "camp.organization_id",
-   "fieldname": "id",
-   "fieldtype": "Data",
-   "label": "ID"
-  },
-  {
-   "fieldname": "camp",
-   "fieldtype": "Link",
-   "label": "Camp",
-   "options": "Camp"
-  },
-  {
    "fetch_from": "camp.shipping_address_1",
    "fieldname": "shipping_line_1",
    "fieldtype": "Data",
@@ -153,12 +142,29 @@
    "fieldname": "shipping_line_3",
    "fieldtype": "Data",
    "label": "Shipping Line 3"
+  },
+  {
+   "fetch_from": "camp.organization_id",
+   "fieldname": "order_id",
+   "fieldtype": "Data",
+   "label": "Order ID"
+  },
+  {
+   "fieldname": "organization_type",
+   "fieldtype": "Select",
+   "label": "Organization Type",
+   "options": "Camp\nOther Organization"
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Data",
+   "label": "Organization"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-27 10:44:35.883888",
+ "modified": "2025-07-12 13:49:10.542181",
  "modified_by": "Administrator",
  "module": "QB",
  "name": "Shipment Tracker",
