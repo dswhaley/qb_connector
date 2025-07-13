@@ -71,7 +71,6 @@ def test_scheduler_job():
 
 
 def customer_update_handler(doc, method):
-    print(doc.custom_create_customer_in_qbo)
     if doc.custom_create_customer_in_qbo == 0:
         doc.custom_create_customer_in_qbo = 0
         return
