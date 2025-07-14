@@ -82,9 +82,9 @@ def customer_update_handler(doc, method):
 
     try:
         organization = None
-        if(doc.custom_camp_link):
+        if doc.custom_camp_link and frappe.db.exists("Camp", {"name": doc.custom_camp_link}):
             organization = frappe.get_doc("Camp", doc.custom_camp_link)
-        elif doc.custom_other_organization_link:
+        elif doc.custom_other_organization_link and frappe.db.exists("Other Organization", {"name": doc.custom_other_organization_link}):
             organization = frappe.get_doc("Other Organization", doc.custom_other_organization_link)
         else:
             frappe.msgprint("Customer not linked to a Camp or an Organization")
