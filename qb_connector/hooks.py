@@ -140,11 +140,11 @@ doc_events = {
         "on_submit": "qb_connector.shipment_hooks.create_shipment_tracker",
         "before_save": "qb_connector.order_hooks.order_hooks"      
     },
-        "Payment Entry": {
-            "on_submit":[
-                "qb_connector.shipment_hooks.link_payment_to_tracker",
-                "qb_connector.payment_hooks.sync_payment_entry_to_qbo"
-            ]
+    "Payment Entry": {
+        "on_submit":[
+            "qb_connector.shipment_hooks.link_payment_to_tracker",
+            "qb_connector.payment_hooks.sync_payment_entry_to_qbo"
+        ]
      }
 }     
 
