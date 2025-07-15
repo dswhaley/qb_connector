@@ -47,6 +47,7 @@ def apply_dynamic_discount(doc, method):
     else:
         doc.apply_discount_on = "Net Total"
         doc.additional_discount_percentage = 0
+        doc.discount_amount = 0
         doc.calculate_taxes_and_totals()
 
         print("Discounting Skipped due to ignore_discount checkbox")
