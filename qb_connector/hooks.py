@@ -4,6 +4,7 @@ app_publisher = "funfangle"
 app_description = "This app will connect to Quickbooks Online and will make Invoices in QB when an invoice is creatERPnext"
 app_email = "danielwhaleygcc@gmail.com"
 app_license = "mit"
+from qb_connector.api_directory import qbo_webhooks
 
 doctype_list_js = {
     "Sales Invoice": "public/js/sales_invoice_list.js",
