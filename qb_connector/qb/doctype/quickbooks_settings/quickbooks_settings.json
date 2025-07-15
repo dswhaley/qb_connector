@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2025-06-19 18:19:53.570521",
+ "creation": "2025-07-03 16:38:26.352045",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -9,6 +9,7 @@
   "clientid",
   "clientsecret",
   "redirecturi",
+  "verifiertoken",
   "realmid",
   "node_server_url",
   "accesstoken",
@@ -60,13 +61,18 @@
    "fieldname": "last_refresh",
    "fieldtype": "Datetime",
    "label": "Last Refresh"
+  },
+  {
+   "fieldname": "verifiertoken",
+   "fieldtype": "Data",
+   "label": "verifierToken"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-06-27 10:18:41.134773",
+ "modified": "2025-07-15 10:22:38.166905",
  "modified_by": "Administrator",
  "module": "QB",
  "name": "QuickBooks Settings",
