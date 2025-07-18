@@ -3,7 +3,6 @@ import subprocess
 import os
 from frappe.utils import now_datetime
 
-
 def sync_qbo_cost_on_update(doc, method):
     #Seperate method that needs to be called for sales taxes before save
     set_item_tax_template(doc, method)
