@@ -102,6 +102,12 @@ fixtures = [
             "Order Tracker", 
             "QB"
         ]]]
+    },
+    {
+        "dt": "Item",
+        "filters": [
+            ["item_code", "=", "TEMP-PLACEHOLDER"]
+        ]
     }
 ]
 
