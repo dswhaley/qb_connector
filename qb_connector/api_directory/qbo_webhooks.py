@@ -85,28 +85,80 @@ def manage_invoicing(invoice_id: str, realm_id: str) -> None:
         print(f"⚠️ No local Sales Invoice with custom_qbo_sales_invoice_id = {invoice_id}")
         return
 
+    # Delete existing items using SQL because the invoice is submitted
+    frappe.db.sql("""
+        DELETE FROM `tabSales Invoice Item`
+        WHERE parent=%s AND parenttype='Sales Invoice'
+    """, frappe_invoice.name)
+
+    quantity = 0
+    net_total = 0
+    # Insert new items based on QBO invoice, using indexed loop for idx
+    for idx, line in enumerate(qbo_invoice.get("Line", []), start=1):
+        if line.get("DetailType") != "SalesItemLineDetail":
+            continue
+
+        detail = line.get("SalesItemLineDetail", {})
+        qbo_item_id = detail.get("ItemRef", {}).get("value")
+        if not qbo_item_id:
+            continue
+
+        try:
+            item_code = frappe.get_value("Item", {"custom_qbo_item_id": qbo_item_id}, "name")
+            if not item_code:
+                print(f"⚠️ Skipping unknown QBO item ID: {qbo_item_id}")
+                continue
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), "QBO Item Lookup Error")
+            continue
+
+        qty = float(detail.get("Qty", 0))
+        quantity += qty
+        rate = float(detail.get("UnitPrice", 0))
+        amount = float(line.get("Amount", 0))
+        net_total += amount
+
+        frappe.db.sql("""
+            INSERT INTO `tabSales Invoice Item`
+            (`name`, `parent`, `parenttype`, `parentfield`, `item_code`, `qty`, `rate`, `amount`, `idx`, `creation`, `modified`, `owner`, `docstatus`)
+            VALUES (%s, %s, 'Sales Invoice', 'items', %s, %s, %s, %s, %s, NOW(), NOW(), %s, 1)
+        """, (
+            frappe.generate_hash(length=10),
+            frappe_invoice.name,
+            item_code,
+            qty,
+            rate,
+            amount,
+            idx,
+            "Administrator"
+        ))
+
+    # Update parent totals
     qbo_total = float(qbo_invoice.get("TotalAmt", 0))
     qbo_net = get_qbo_invoice_net_total(qbo_invoice)
+    qbo_tax = float(qbo_invoice.get("TxnTaxDetail", {}).get("TotalTax", 0))
+    discount_amount = abs(net_total - (qbo_total - qbo_tax))
+    discount_percentage = round((discount_amount / net_total) * 100)
 
-    tax_detail = qbo_invoice.get("TxnTaxDetail", {})
-    qbo_tax = float(tax_detail.get("TotalTax", 0))
+    frappe.db.set_value("Sales Invoice", frappe_invoice.name, {
+        "grand_total": qbo_total,
+        "total": net_total,
+        "additional_discount_percentage": discount_percentage,
+        "discount_amount": discount_amount,
+        "net_total": qbo_total - qbo_tax,
+        "total_qty": quantity,
+        "rounded_total": qbo_total,
+        "total_taxes_and_charges": qbo_tax,
+        "base_grand_total": qbo_total,
+        "base_net_total": qbo_net,
+        "base_total_taxes_and_charges": qbo_tax,
+        "outstanding_amount": frappe_invoice.outstanding_amount or 0.0
+    })
 
-    if (
-        frappe_invoice.grand_total != qbo_total
-        or frappe_invoice.total_taxes_and_charges != qbo_tax
-        or frappe_invoice.net_total != qbo_net
-    ):
-        frappe.db.set_value(
-            "Sales Invoice",
-            frappe_invoice.name,
-            {
-                "grand_total": qbo_total,
-                "total_taxes_and_charges": qbo_tax,
-                "net_total": qbo_net,
-            },
-        )
-        frappe.db.commit()
-        print(f"🎯 Synced QBO Invoice {invoice_id} → Frappe {frappe_invoice.name}")
+    frappe.db.commit()
+
+    print(f"✅ Synced submitted invoice {frappe_invoice.name} with QBO invoice {invoice_id}")
+
 
 
 def get_qbo_invoice_net_total(invoice: dict) -> float:
