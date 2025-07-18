@@ -13,29 +13,32 @@ def sync_sales_invoice_to_qbo(doc, method):
     try:
         print("🔧 Starting QBO script execution...")
         #The .ts function will return the qbo sales invoice id if it succeeds or -1 if it fails
-        invoice_id = run_qbo_script("syncInvoiceToQbo.ts", doc.name)
+        if not doc.custom_dont_sync:
+            invoice_id = run_qbo_script("syncInvoiceToQbo.ts", doc.name)
 
-        if invoice_id >= 0:
-            status = "Synced"
+            if invoice_id >= 0:
+                status = "Synced"
+            else:
+                status = "Failed"
+                invoice_id = None
+
+            print(f"📨 Enqueuing sync status update → {status}")
+            if invoice_id:
+                frappe.enqueue("qb_connector.qbo_hooks.mark_qbo_sync_status",
+                            doctype=doc.doctype,
+                            docname=doc.name,
+                            status=status,
+                            invoice_id=invoice_id)
+            else: 
+                frappe.enqueue("qb_connector.qbo_hooks.mark_qbo_sync_status",
+                    doctype=doc.doctype,
+                    docname=doc.name,
+                    status=status)
+
+            print(f"🧾 Enqueued Sales Invoice sync status update for {doc.name}")
+            frappe.logger().info(f"🧾 Enqueued Sales Invoice sync status update → {status}")
         else:
-            status = "Failed"
-            invoice_id = None
-
-        print(f"📨 Enqueuing sync status update → {status}")
-        if invoice_id:
-            frappe.enqueue("qb_connector.qbo_hooks.mark_qbo_sync_status",
-                        doctype=doc.doctype,
-                        docname=doc.name,
-                        status=status,
-                        invoice_id=invoice_id)
-        else: 
-            frappe.enqueue("qb_connector.qbo_hooks.mark_qbo_sync_status",
-                doctype=doc.doctype,
-                docname=doc.name,
-                status=status)
-
-        print(f"🧾 Enqueued Sales Invoice sync status update for {doc.name}")
-        frappe.logger().info(f"🧾 Enqueued Sales Invoice sync status update → {status}")
+            print("Not syncing due to don't sync flag")
     except Exception as e:
         print(f"❌ Error in sync_sales_invoice_to_qbo: {e}")
         frappe.logger().error(f"❌ Sales Invoice sync failed: {str(e)}")
