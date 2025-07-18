@@ -27,9 +27,7 @@ async function main() {
     const addressParts = customer.custom_billing_address.split(',').map((p: string) => p.trim());
     const state = addressParts[2];
     const stateTaxability = await getStateTaxability(state);
-    if(stateTaxability === null){
-      throw new Error(`❌ State ${state} is not a valid state`);
-    }
+
 
     if (!customer.custom_qbo_customer_id) {
       throw new Error(`❌ Customer ${customer.name} has no QBO ID.`);
@@ -116,44 +114,44 @@ async function main() {
       }
     }
     
-    // const discountPercent = parseFloat(invoice.additional_discount_percentage || "0");
-    // if (discountPercent > 0) {
-    //   lineItems.push({
-    //     DetailType: "DiscountLineDetail",
-    //     DiscountLineDetail: {
-    //       PercentBased: true,
-    //       DiscountPercent: discountPercent,
-    //       DiscountAccountRef: { value: discountID, name: "Discounts given" },
-    //     },
-    //     Description: `ERPNext Additional Discount: ${discountPercent.toFixed(2)}%`,
-    //   });
-    // }
-
-    if (taxedDiscountAmount > 0) {
+    const discountPercent = parseFloat(invoice.additional_discount_percentage || "0");
+    if (discountPercent > 0) {
       lineItems.push({
-        DetailType: "SalesItemLineDetail",
-        Amount: -taxedDiscountAmount,
-        SalesItemLineDetail: {
-          ItemRef: { value: taxedDiscountID},
-          Qty: 1,
-          UnitPrice: -taxedDiscountAmount,
+        DetailType: "DiscountLineDetail",
+        DiscountLineDetail: {
+          PercentBased: true,
+          DiscountPercent: discountPercent,
+          DiscountAccountRef: { value: discountID, name: "Discounts given" },
         },
-        Description: `Disount amount is ${taxedDiscountAmount}`,
+        Description: `ERPNext Additional Discount: ${discountPercent.toFixed(2)}%`,
       });
     }
 
-    if(nonTaxedDiscountAmount > 0){
-      lineItems.push({
-        DetailType: "SalesItemLineDetail",
-        Amount: -nonTaxedDiscountAmount,
-        SalesItemLineDetail: {
-          ItemRef: { value: nonTaxedDiscountID},
-          Qty: 1,
-          UnitPrice: -nonTaxedDiscountAmount,
-        },
-        Description: `Disount amount is ${nonTaxedDiscountAmount}`,
-      });      
-    }
+    // if (taxedDiscountAmount > 0) {
+    //   lineItems.push({
+    //     DetailType: "SalesItemLineDetail",
+    //     Amount: -taxedDiscountAmount,
+    //     SalesItemLineDetail: {
+    //       ItemRef: { value: taxedDiscountID},
+    //       Qty: 1,
+    //       UnitPrice: -taxedDiscountAmount,
+    //     },
+    //     Description: `Disount amount is ${taxedDiscountAmount}`,
+    //   });
+    // }
+
+    // if(nonTaxedDiscountAmount > 0){
+    //   lineItems.push({
+    //     DetailType: "SalesItemLineDetail",
+    //     Amount: -nonTaxedDiscountAmount,
+    //     SalesItemLineDetail: {
+    //       ItemRef: { value: nonTaxedDiscountID},
+    //       Qty: 1,
+    //       UnitPrice: -nonTaxedDiscountAmount,
+    //     },
+    //     Description: `Disount amount is ${nonTaxedDiscountAmount}`,
+    //   });      
+    // }
 
     if (lineItems.length === 0) {
       throw new Error("❌ No valid QBO items to sync.");
@@ -230,7 +228,7 @@ async function getStateTaxability(state: string) {
       const isTaxable = stateInfo[fieldName];  // Will be true if checkbox is checked, false otherwise
       return isTaxable;  // Return true or false
     } else {
-      return null;  // If the field doesn't exist, return null
+      return false;  // If the field doesn't exist, return null
     }
   } catch (error) {
     console.error("Error fetching State Tax Information:", error);
