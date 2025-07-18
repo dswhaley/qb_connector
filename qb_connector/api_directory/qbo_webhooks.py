@@ -80,7 +80,8 @@ def manage_invoicing(invoice_id: str, realm_id: str) -> None:
         print(f"⚠️ Invoice {invoice_id} could not be fetched from QBO.")
         return
 
-    frappe_invoice = get_sales_invoice_by_qbo_id(invoice_id)
+    frappe_invoice = get_sales_invoice_by_qbo_id(invoice_id, qbo_invoice)
+    print(f"Frappe Invoice: {frappe_invoice}")
     if not frappe_invoice:
         print(f"⚠️ No local Sales Invoice with custom_qbo_sales_invoice_id = {invoice_id}")
         return
@@ -137,27 +138,34 @@ def manage_invoicing(invoice_id: str, realm_id: str) -> None:
     qbo_total = float(qbo_invoice.get("TotalAmt", 0))
     qbo_net = get_qbo_invoice_net_total(qbo_invoice)
     qbo_tax = float(qbo_invoice.get("TxnTaxDetail", {}).get("TotalTax", 0))
-    discount_amount = abs(net_total - (qbo_total - qbo_tax))
-    discount_percentage = round((discount_amount / net_total) * 100)
 
-    frappe.db.set_value("Sales Invoice", frappe_invoice.name, {
-        "grand_total": qbo_total,
-        "total": net_total,
-        "additional_discount_percentage": discount_percentage,
-        "discount_amount": discount_amount,
-        "net_total": qbo_total - qbo_tax,
-        "total_qty": quantity,
-        "rounded_total": qbo_total,
-        "total_taxes_and_charges": qbo_tax,
-        "base_grand_total": qbo_total,
-        "base_net_total": qbo_net,
-        "base_total_taxes_and_charges": qbo_tax,
-        "outstanding_amount": frappe_invoice.outstanding_amount or 0.0
-    })
+    if net_total != 0 and qbo_total and qbo_tax:
+        discount_amount = abs(net_total - (qbo_total - qbo_tax))
+        discount_percentage = round((discount_amount / net_total) * 100)
+    else:
+        discount_amount = 0
+        discount_percentage = 0
+    try:
+        frappe.db.set_value("Sales Invoice", frappe_invoice.name, {
+            "grand_total": qbo_total,
+            "total": net_total,
+            "additional_discount_percentage": discount_percentage,
+            "discount_amount": discount_amount,
+            "net_total": qbo_total - qbo_tax,
+            "total_qty": quantity,
+            "rounded_total": qbo_total,
+            "total_taxes_and_charges": qbo_tax,
+            "base_grand_total": qbo_total,
+            "base_net_total": qbo_net,
+            "base_total_taxes_and_charges": qbo_tax,
+            "outstanding_amount": frappe_invoice.outstanding_amount or 0.0
+        })
 
-    frappe.db.commit()
-
-    print(f"✅ Synced submitted invoice {frappe_invoice.name} with QBO invoice {invoice_id}")
+        frappe.db.commit()
+        
+        print(f"✅ Synced submitted invoice {frappe_invoice.name} with QBO invoice {invoice_id}")
+    except Exception as e:
+        print(f"Failed to update invoice due to: {str(e)}")
 
 
 
@@ -169,11 +177,73 @@ def get_qbo_invoice_net_total(invoice: dict) -> float:
     return total
 
 
-def get_sales_invoice_by_qbo_id(invoice_id: str):
+def get_sales_invoice_by_qbo_id(invoice_id: str, invoice):
     name = frappe.get_value(
         "Sales Invoice", {"custom_qbo_sales_invoice_id": invoice_id}, "name"
     )
-    return frappe.get_doc("Sales Invoice", name) if name else None
+    if name:
+        return frappe.get_doc("Sales Invoice", name)
+    else:
+        print("Got to else statement")
+        customer_ref = invoice.get("CustomerRef", {})
+        customer_id = customer_ref.get("value")
+        print(f"Customer id: {customer_id}")
+        customer_name = get_customer_by_qbo_id(customer_id)
+        print(f"Customer name: {customer_name}")
+        if not customer_name:
+            raise ValueError("QBO Customer does not exist in Frappe")
+
+        # 👇 Ensure all required values are defined
+        qbo_total = float(invoice.get("TotalAmt", 0))
+        qbo_tax = float(invoice.get("TxnTaxDetail", {}).get("TotalTax", 0))
+        qbo_net = qbo_total - qbo_tax
+        currency = invoice.get("CurrencyRef", {}).get("value") or "USD"
+
+        print("Making new invoice")
+        try:
+            new_invoice = frappe.get_doc({
+                "doctype": "Sales Invoice",
+                "customer": customer_name,
+                "currency": currency,
+                "conversion_rate": 1.0,
+                "custom_dont_sync": 1,
+                "grand_total": qbo_total,
+                "custom_sync_status": "Synced",
+                "rounded_total": qbo_total,
+                "total_taxes_and_charges": qbo_tax,
+                "base_grand_total": qbo_total,
+                "base_net_total": qbo_net,
+                "base_total_taxes_and_charges": qbo_tax,
+                "base_rounded_total": qbo_total,  # 🟢 Add this field
+                "outstanding_amount": 0,
+                "items": [  # 👈 This is the ONE placeholder item you wanted
+                    {
+                        "item_code": "TEMP-PLACEHOLDER",
+                        "qty": 1,
+                        "rate": 0,
+                        "amount": 0
+                    }
+                ],
+                "total": qbo_net,
+                "custom_qbo_sales_invoice_id": invoice_id,
+                "docstatus": 1
+            })
+            print("inserting invoice")
+            new_invoice.insert(ignore_permissions=True)
+            return new_invoice
+        except Exception as e:
+            print(f"Failed to make invoice due to: {str(e)}")
+            return None
+
+
+
+def get_customer_by_qbo_id(customer_id: str):
+    matches = frappe.get_all(
+        "Customer",
+        filters={"custom_qbo_customer_id": customer_id},
+        fields=["name"]
+    )
+    return matches[0]["name"] if matches else None
 
 
 def fetch_invoice(invoice_id: str, realm_id: str) -> Optional[dict]:
