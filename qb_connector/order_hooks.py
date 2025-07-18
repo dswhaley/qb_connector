@@ -44,8 +44,7 @@ def get_state_tax_status(customer):
     if any(df.fieldname == state for df in meta.fields):
         return state_info.get(state)
     else:
-        raise ValueError(f"❌ Invalid State: field '{state}' not found in State Tax Information.")
-    
+        return False
 def check_negotiated_items(doc, method):
     try:
         customer = frappe.get_doc("Customer", doc.customer)
