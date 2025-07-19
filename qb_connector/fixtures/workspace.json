@@ -16,7 +16,7 @@
   "link_to": null,
   "link_type": "DocType",
   "links": [],
-  "modified": "2025-06-17 23:21:15.891319",
+  "modified": "2025-07-19 11:51:11.134043",
   "module": "Order Tracker",
   "name": "Shipments",
   "number_cards": [],
@@ -42,7 +42,7 @@
     "url": null
    }
   ],
-  "title": "Shipments",
+  "title": "Order Tracking",
   "type": "Workspace"
  },
  {
