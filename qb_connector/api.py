@@ -71,6 +71,8 @@ def test_scheduler_job():
 
 
 def customer_update_handler(doc, method):
+    if (doc.custom_camp_link or doc.custom_other_organization_link) and doc.custom_email and doc.custom_phone and doc.custom_billing_address and (doc.custom_tax_status == "Taxed" or (doc.custom_tax_status == "Exempt" and doc.custom_tax_exemption_number)):
+        doc.custom_create_customer_in_qbo = 1
     if doc.custom_create_customer_in_qbo == 0:
         doc.custom_create_customer_in_qbo = 0
         return
