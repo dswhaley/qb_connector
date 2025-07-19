@@ -1,0 +1,41 @@
+{
+ "app": "erpnext",
+ "charts": [],
+ "content": "[{\"id\":\"bKVs4bmDdh\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Shipments</span>\",\"col\":12}},{\"id\":\"fGKXu29X1k\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Shipment Lists\",\"col\":3}}]",
+ "creation": "2025-07-03 16:38:26.641801",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "mail",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Order Tracking",
+ "link_type": "DocType",
+ "links": [],
+ "modified": "2025-07-19 11:51:11.134043",
+ "modified_by": "Administrator",
+ "module": "Order Tracker",
+ "name": "Order Tracking",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 24.0,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Shipment Lists",
+   "link_to": "Shipment Tracker",
+   "stats_filter": "[]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Order Tracking",
+ "type": "Workspace"
+}
