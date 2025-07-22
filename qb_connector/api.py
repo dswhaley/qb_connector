@@ -71,7 +71,7 @@ def test_scheduler_job():
 
 
 def customer_update_handler(doc, method):
-    if (doc.custom_camp_link or doc.custom_other_organization_link) and doc.custom_email and doc.custom_phone and doc.custom_billing_address and (doc.custom_tax_status == "Taxed" or (doc.custom_tax_status == "Exempt" and doc.custom_tax_exemption_number)):
+    if (doc.custom_camp_link or doc.custom_other_organization_link) and doc.custom_email and doc.custom_phone and doc.custom_street_address_line_1 and doc.custom_city and doc.custom_state and doc.custom_zip_code and doc.custom_country and (doc.custom_tax_status == "Taxed" or (doc.custom_tax_status == "Exempt" and doc.custom_tax_exemption_number) and doc.custom_qbo_sync_status != "Synced"):
         doc.custom_create_customer_in_qbo = 1
     if doc.custom_create_customer_in_qbo == 0:
         doc.custom_create_customer_in_qbo = 0
@@ -99,13 +99,13 @@ def customer_update_handler(doc, method):
         frappe.msgprint(f"Customer: {doc.name} has an invalid Organizaton Link")
         return
 
-    if organization.tax_exempt == "Pending":
+    if doc.custom_tax_status == "Pending":
         doc.custom_qbo_sync_status = "Tax Status Pending"
         doc.custom_create_customer_in_qbo = 0
         frappe.msgprint(f"Customer: {doc.name} not created in QBO because 'Tax Status Pending'")
         return
 
-    if organization.tax_exempt == "Exempt" and not organization.tax_exemption_number:
+    if doc.custom_tax_status == "Exempt" and not organization.tax_exemption_number:
         doc.custom_qbo_sync_status = "Missing Tax Exemption Number"
         doc.custom_create_customer_in_qbo = 0
         frappe.msgprint(f"Customer: {doc.name} not created in QBO because 'Missing Tax Exemption Number'")
@@ -138,8 +138,8 @@ def customer_update_handler(doc, method):
                 doc.custom_create_customer_in_qbo = 0
             else:
                 frappe.msgprint(f"⚠️ QBO Sync Result for {doc.name}: {doc.custom_qbo_sync_status}")
-
-        except Exception as e:
+            doc.save(ignore_permissions=True)
+        except Exception as e: 
             doc.custom_qbo_sync_status = "Failed"
             doc.custom_create_customer_in_qbo = 0
             frappe.log_error(f"Error during QBO sync for {doc.name}: {e}", "QBO Sync Error")
