@@ -33,9 +33,12 @@ def create_shipment_tracker(doc, method):
 def set_organization_info(tracker, organization_type, customer_name):
     organization = frappe.get_doc(organization_type, customer_name)
     tracker.order_id = organization.organization_order_id
-    tracker.shipping_line_1 = organization.shipping_address_1
-    tracker.shipping_line_2 = organization.shipping_address_2
-    tracker.shipping_line_3 = organization.shipping_address_3
+    tracker.street_address_line_1 = organization.street_address_line_1_shipping_address
+    tracker.street_address_line_2 = organization.street_address_line_2_shipping_address
+    tracker.city = organization.city_shipping_address
+    tracker.state = organization.state_shipping_address
+    tracker.zip_code = organization.zip_code_shipping_address
+    tracker.country = organization.country_shipping_address
     
 
 
