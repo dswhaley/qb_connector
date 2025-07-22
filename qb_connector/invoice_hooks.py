@@ -124,8 +124,7 @@ def use_tax_status(doc, method):
 
 def get_state_tax_status(customer):
     try:
-        parts = customer.custom_billing_address.split(",")
-        state = parts[2].strip().lower()
+        state = customer.custom_state
         print(f"📂 State: {state}")
     except Exception:
         raise ValueError("❌ Invalid billing address format (expected at least 3 parts: 'Street, City, State').")
