@@ -67,30 +67,27 @@ export async function createCustomerInQbo(customerName: string): Promise<frappeR
   }
 
   // ✅ Billing Address
-  if (isFilled(customer.custom_billing_address)) {
-    const parts = customer.custom_billing_address.split(',').map((p: string) => p.trim());
-    if (parts.length === 4 && parts.every(isFilled)) {
-      const [Line1, City, State, PostalCode] = parts;
+  console.warn(`Line1 ${customer.custom_street_address_line_1}`);
+  console.warn(`Line2 ${customer.custom_street_address_line_2}`);
+  console.warn(`City  ${customer.custom_city}`);
+  console.warn(`State ${customer.custom_state}`);
+  console.warn(`Zip Code: ${customer.custom_zip_code}`);
+  console.warn(`Country:  ${customer.custom_country}`)
+  if (isFilled(customer.custom_street_address_line_1) && isFilled(customer.custom_city) && isFilled(customer.custom_state) && isFilled(customer.custom_zip_code) && isFilled(customer.custom_country)) {
+    const Line1 = customer.custom_street_address_line_1;
+    const Line2 = customer.custom_street_address_line_2;
+    const City = customer.custom_city;
+    const State = customer.custom_state;
+    const PostalCode = customer.custom_zip_code;
+    const Country = customer.cusom_countryl;
       qboCustomer.BillAddr = {
         Line1,
-        City,
-        CountrySubDivisionCode: State,
-        PostalCode,
-        Country: "United States"
-      };
-    } else if(parts.length === 5 && parts.every(isFilled)){
-      const[Line1, City, State, PostalCode, countryPart] = parts;
-      const Country = isFilled(countryPart) ? countryPart : 'United States';
-            qboCustomer.BillAddr = {
-        Line1,
+        Line2,
         City,
         CountrySubDivisionCode: State,
         PostalCode,
         Country
       };
-    }else{
-      missing.push('Address');
-    }
   } else {
     missing.push('Address');
   }
