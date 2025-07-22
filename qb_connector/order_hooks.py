@@ -32,8 +32,7 @@ def use_tax_status(doc, method):
 
 def get_state_tax_status(customer):
     try:
-        parts = customer.custom_billing_address.split(",")
-        state = parts[2].strip().lower()
+        state = customer.custom_state
         print(f"📂 State: {state}")
     except Exception:
         raise ValueError("❌ Invalid billing address format (expected at least 3 parts: 'Street, City, State').")
@@ -47,36 +46,36 @@ def get_state_tax_status(customer):
         return False
 def check_negotiated_items(doc, method):
     try:
-        customer = frappe.get_doc("Customer", doc.customer)
-        organization = None
-        if customer.custom_camp_link:
-            organization = frappe.get_doc("Camp", customer.custom_camp_link)
-        elif customer.custom_other_organization_link:
-            organization = frappe.get_doc("Other Organization", customer.custom_other_organization_link)
+        if(not doc.custom_ignore_negotiated_price):
+            customer = frappe.get_doc("Customer", doc.customer)
+            organization = None
+            if customer.custom_camp_link:
+                organization = frappe.get_doc("Camp", customer.custom_camp_link)
+            elif customer.custom_other_organization_link:
+                organization = frappe.get_doc("Other Organization", customer.custom_other_organization_link)
 
-        if organization == None:
-            frappe.msgprint("Customer is not Linked to a Camp or an Organization")
-            return
+            if organization == None:
+                frappe.msgprint("Customer is not Linked to a Camp or an Organization")
+                return
 
-        if organization.negotiated_wristband:
-            if organization.negotiated_wristband_price:
-                search_order_and_update_price(doc, organization.negotiated_wristband, organization.negotiated_wristband_price)
-            else:
-                frappe.msgprint("Customer has a negotiated wristband, but no negotiated writband price")
+            if organization.negotiated_wristband:
+                if organization.negotiated_wristband_price:
+                    search_order_and_update_price(doc, organization.negotiated_wristband, organization.negotiated_wristband_price)
+                else:
+                    frappe.msgprint("Customer has a negotiated wristband, but no negotiated writband price")
 
-        if organization.negotiated_regular_account:
-            if organization.negotiated_regular_account_price:
-                search_order_and_update_price(doc, organization.negotiated_regular_account, organization.negotiated_regular_account_price)
-            else:
-                frappe.msgprint("Customer has a negotiated account, but no negotiated account price")
+            if organization.negotiated_regular_account:
+                if organization.negotiated_regular_account_price:
+                    search_order_and_update_price(doc, organization.negotiated_regular_account, organization.negotiated_regular_account_price)
+                else:
+                    frappe.msgprint("Customer has a negotiated account, but no negotiated account price")
 
-        if organization.negotiated_staff_account:
-            if organization.negotiated_staff_account_price:
-                search_order_and_update_price(doc, organization.negotiated_staff_account, organization.negotiated_staff_account_price)
-            else:
-                frappe.msgprint("Customer has a negotiated account, but no negotiated account price")
+            if organization.negotiated_staff_account:
+                if organization.negotiated_staff_account_price:
+                    search_order_and_update_price(doc, organization.negotiated_staff_account, organization.negotiated_staff_account_price)
+                else:
+                    frappe.msgprint("Customer has a negotiated account, but no negotiated account price")
 
-            
 
     except Exception as e:
         frappe.msgprint(f"Failed due to: {str(e)}")
