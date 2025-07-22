@@ -12,7 +12,12 @@ interface Customer {
   custom_qbo_sync_status?: string;
   custom_qbo_last_synced_at?: string;
   custom_customer_exists_in_qbo?: number;
-  custom_billing_address?: string;
+  custom_street_address_line_1?: string;
+  custom_street_address_line_2?: string;
+  custom_city?: string;
+  custom_state?: string;
+  custom_zip_code?: string;
+  custom_country?: string;
   custom_tax_status?: string;
 }
 
@@ -22,6 +27,7 @@ interface QboCustomer {
   Taxable?: boolean;
   BillAddr?: {
     Line1?: string;
+    Line2?: string;
     City?: string;
     CountrySubDivisionCode?: string;
     PostalCode?: string;
@@ -81,42 +87,43 @@ export async function syncCustomerToQbo(customerName: string): Promise<'matched'
 
     let match = nameResp.data.QueryResponse.Customer?.[0];
 
-    if (!match && customer.custom_billing_address) {
+    if (!match) {
       const fullQuery = `select * from Customer`;
       const fullResp = await axios.get<QboCustomerQueryResponse>(
         `${baseUrl}/${settings.realmId}/query?query=${encodeURIComponent(fullQuery)}`,
         { headers }
       );
 
-      const parts = customer.custom_billing_address
-        .split(',')
-        .map((p) => p.trim().toLowerCase());
+      const line1 = customer.custom_street_address_line_1;
+      const line2 = customer.custom_street_address_line_2;
+      const city = customer.custom_city;
+      const state = customer.custom_state;
+      const postalCode = customer.custom_zip_code;
+      const country = customer.custom_country;
 
-      if (parts.length === 4 || parts.length === 5) {
-        const [line1, city, state, postalCode, country] = parts;
 
         match = fullResp.data.QueryResponse.Customer?.find((qbo) => {
           const addr = qbo.BillAddr;
           if (!addr) return false;
 
-          const lineMatch = addr.Line1?.trim().toLowerCase() === line1;
-          const cityMatch = addr.City?.trim().toLowerCase() === city;
-          const stateMatch = addr.CountrySubDivisionCode?.trim().toLowerCase() === state;
-          const postalMatch = addr.PostalCode?.trim().toLowerCase() === postalCode;
+          const line1Match = addr.Line1?.trim() === line1;
+          const line2Match = addr.Line2?.trim() === line2;
+          const cityMatch = addr.City?.trim() === city;
+          const stateMatch = addr.CountrySubDivisionCode?.trim() === state;
+          const postalMatch = addr.PostalCode?.trim() === postalCode;
 
           let countryMatch = true;
-          if (parts.length === 5 && country) {
-            countryMatch = addr.Country?.trim().toLowerCase() === country;
-          }
+          countryMatch = addr.Country?.trim().toLowerCase() === country;
+          
 
-          return lineMatch && cityMatch && stateMatch && postalMatch && countryMatch;
+          return line1Match && line2Match && cityMatch && stateMatch && postalMatch && countryMatch;
         });
       } else {
         console.warn(
           `⚠️ Billing address for ${customer.name} is not in expected format: 'Line1, City, State, Zip[, Country]'`
         );
       }
-    }
+    
 
     if (match) {
       const frappeTaxStatus = customer.custom_tax_status?.toLowerCase();
