@@ -27,9 +27,13 @@
   "order_id",
   "organization_type",
   "organization",
-  "shipping_line_1",
-  "shipping_line_2",
-  "shipping_line_3"
+  "shipping_address_section",
+  "street_address_line_1",
+  "street_address_line_2",
+  "city",
+  "state",
+  "zip_code",
+  "country"
  ],
  "fields": [
   {
@@ -123,25 +127,7 @@
   {
    "fieldname": "camp_info_section",
    "fieldtype": "Section Break",
-   "label": "Camp info"
-  },
-  {
-   "fetch_from": "camp.shipping_address_1",
-   "fieldname": "shipping_line_1",
-   "fieldtype": "Data",
-   "label": "Shipping Line 1"
-  },
-  {
-   "fetch_from": "camp.shipping_address_2",
-   "fieldname": "shipping_line_2",
-   "fieldtype": "Data",
-   "label": "Shipping Line 2"
-  },
-  {
-   "fetch_from": "camp.shipping_address_3",
-   "fieldname": "shipping_line_3",
-   "fieldtype": "Data",
-   "label": "Shipping Line 3"
+   "label": "Organization info"
   },
   {
    "fetch_from": "camp.organization_id",
@@ -159,12 +145,47 @@
    "fieldname": "organization",
    "fieldtype": "Data",
    "label": "Organization"
+  },
+  {
+   "fieldname": "shipping_address_section",
+   "fieldtype": "Section Break",
+   "label": "Shipping Address"
+  },
+  {
+   "fieldname": "street_address_line_1",
+   "fieldtype": "Data",
+   "label": "Street Address Line 1"
+  },
+  {
+   "fieldname": "street_address_line_2",
+   "fieldtype": "Data",
+   "label": "Street Address Line 2 "
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Data",
+   "label": "City"
+  },
+  {
+   "fieldname": "state",
+   "fieldtype": "Data",
+   "label": "State"
+  },
+  {
+   "fieldname": "zip_code",
+   "fieldtype": "Data",
+   "label": "Zip Code"
+  },
+  {
+   "fieldname": "country",
+   "fieldtype": "Data",
+   "label": "Country"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-12 13:49:10.542181",
+ "modified": "2025-07-22 13:24:29.586952",
  "modified_by": "Administrator",
  "module": "QB",
  "name": "Shipment Tracker",
