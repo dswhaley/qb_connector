@@ -24,8 +24,7 @@ async function main() {
     const invoice = await frappe.getDoc<any>("Sales Invoice", invoiceName);
     const customer = await frappe.getDoc<any>("Customer", invoice.customer);
 
-    const addressParts = customer.custom_billing_address.split(',').map((p: string) => p.trim());
-    const state = addressParts[2];
+    const state = customer.custom_state;
     const stateTaxability = await getStateTaxability(state);
 
 
@@ -157,8 +156,12 @@ async function main() {
       throw new Error("❌ No valid QBO items to sync.");
     }
 
-    const [name, street, city, statePostal] = customer.custom_billing_address.split(',').map((s: string) => s.trim());
-    const [stateCode, postalCode] = statePostal.split(' ').filter(Boolean);
+    const street1 = customer.custom_street_address_line_1;
+    const street2 = customer.custom_street_address_line_2;
+    const city = customer.custom_city;
+    const stateCode = customer.custom_state;
+    const postalCode = customer.custom_zip_code;
+    const country = customer.custom_country;
 
     const qboInvoice: any = {
     CustomerRef: { value: customer.custom_qbo_customer_id },
@@ -167,10 +170,12 @@ async function main() {
       DueDate: invoice.due_date || undefined,
       ApplyTaxAfterDiscount: true,
       ShipAddr: {
-        Line1: street,
+        Line1: street1,
+        Line2: street2,
         City: city,
         CountrySubDivisionCode: stateCode,
         PostalCode: postalCode,
+        Country: country
       },
     };
     if (!invoice.exempt_from_sales_tax) {
