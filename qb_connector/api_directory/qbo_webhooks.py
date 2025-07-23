@@ -8,6 +8,7 @@ import base64
 import frappe
 import requests
 from dotenv import load_dotenv
+import subprocess
 
 
 @frappe.whitelist(allow_guest=True)
@@ -48,6 +49,9 @@ def handle_qbo_webhook():
                 if entity_type == "Invoice":
                     manage_invoicing(entity_id, realm_id)
 
+                if entity_type == "Payment":
+                    manage_payments(entity_id, realm_id)
+
                 print(
                     f"🔔 {operation} on {entity_type} {entity_id} "
                     f"(Realm: {realm_id}) at {updated_at}"
@@ -72,6 +76,31 @@ def verify_signature(raw_body: bytes, signature: Optional[str], secret: bytes) -
     encoded_digest = base64.b64encode(digest).decode()  # base64 string
 
     return hmac.compare_digest(encoded_digest, signature)
+
+def manage_payments(payment_id: str, realm_id: str) -> None:
+    import frappe
+
+def manage_payments(payment_id: str, realm_id: str) -> None:
+    """
+    Triggered from handle_qbo_webhook() when a QBO Payment webhook is received.
+    Runs the TypeScript sync script for the given payment ID using run_qbo_script().
+    """
+    if not payment_id:
+        frappe.logger().error("❌ manage_payments: No payment_id provided.")
+        return
+
+    script_name = "syncQboPaymentsToFrappe.ts"
+
+    frappe.logger().info(f"🔁 Syncing QBO Payment {payment_id} via {script_name}")
+
+    success = run_qbo_script(script_name, docname=payment_id)
+
+    if not success:
+        msg = f"❌ Failed to sync QBO Payment ID: {payment_id}"
+        frappe.logger().error(msg)
+        raise Exception(msg)
+
+    frappe.logger().info(f"✅ Successfully synced QBO Payment ID: {payment_id}")
 
 
 def manage_invoicing(invoice_id: str, realm_id: str) -> None:
@@ -285,3 +314,68 @@ def fetch_invoice(invoice_id: str, realm_id: str) -> Optional[dict]:
         frappe.log_error(str(err), "QBO Invoice Fetch HTTPError")
     except Exception:
         print("❌ Unexpected error fetching")
+
+def run_qbo_script(script_name: str, docname: str = None) -> str | None:
+    try:
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        app_root = os.path.abspath(os.path.join(current_dir, "..", ".."))  # up two levels
+        script_dir = os.path.join(app_root, "ts_qbo_client", "src")
+        script_path = os.path.join(script_dir, script_name)
+
+        print(f"🔍 Script path: {script_path}")
+
+        # If docname is provided, include it in the command; otherwise, omit it
+        if docname:
+            print(f"📦 Running: npx ts-node {script_path} {docname}")
+            process = subprocess.Popen(
+                ["npx", "ts-node", os.path.basename(script_path), docname],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                cwd=script_dir
+            )
+        else:
+            print(f"📦 Running: npx ts-node {script_path}")
+            process = subprocess.Popen(
+                ["npx", "ts-node", os.path.basename(script_path)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                cwd=script_dir
+            )
+
+        stdout, stderr = process.communicate()
+
+        if stdout:
+            print(f"📤 STDOUT:\n{stdout}")
+            frappe.logger().info(f"[Payment Entry Sync Output] {stdout}")
+
+        if stderr:
+            print(f"❗ STDERR:\n{stderr}")
+            frappe.logger().error(f"[Payment Entry Sync Error] {stderr}")
+
+        return process.returncode == 0
+
+    except Exception as e:
+        print(f"❌ Exception during script execution: {e}")
+        frappe.logger().error(f"❌ Exception in run_qbo_script: {str(e)}")
+        return False
+
+def mark_qbo_sync_status(doctype: str, docname: str, status: str, payment_id: str = None):
+    """Set last_synced and sync_status after QBO update."""
+    try:
+        doc = frappe.get_doc(doctype, docname)
+        doc.db_set("custom_sync_status", status)
+        if status != "Synced":
+            frappe.msgprint(f"Failed to Sync: {status}")
+        # Only update the custom_qbo_sales_invoice_id if invoice_id is provided
+        if payment_id:
+            doc.db_set("custom_qbo_payment_id", payment_id)
+        
+        # Save the document with the updated fields
+        doc.save()
+
+    except Exception as e:
+        frappe.logger().error(f"❌ Failed to update sync status for {doctype} {docname}: {str(e)}")
+        print(f"❌ Error in mark_qbo_sync_status: {e}")
+
