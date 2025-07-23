@@ -1,39 +1,5 @@
 console.log("📦 Loaded: payment_list.js");
 
-// 👇 Reusable button logic
-function inject_sync_button(listview) {
-    if (listview.retry_button_added) return;
-
-    console.log("✅ Injecting Sync QBO Payments button");
-
-    let button = listview.page.add_inner_button("Sync Payments From QBO", async () => {
-        console.log("🔁 Retry button clicked");
-
-        // ⛔ Disable and show spinner
-        button.prop("disabled", true).html(`<i class="fa fa-spinner fa-spin"></i> Retrying...`);
-
-        try {
-            // 🌀 First call: refresh token
-            await frappe.call({ method: "qb_connector.api.refresh_qbo_token" });
-
-            // 🧾 Second call: retry failed syncs
-            const r = await frappe.call({
-                method: "qb_connector.payment_hooks.sync_payments_from_qbo"
-            });
-            
-            button.prop("disabled", false).html("Sync Payments From QBO");
-            listview.refresh();
-            
-        } catch (error) {
-            frappe.msgprint("❌ Retry failed.");
-            console.error("Retry error:", error);
-            button.prop("disabled", false).html("Sync Payments From QBO");
-        }
-    });
-
-    listview.retry_button_added = true;
-}
-
 function inject_retry_button(listview) {
     if (listview.sync_button_added) return;
 
