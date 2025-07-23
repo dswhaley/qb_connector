@@ -61,17 +61,30 @@ def link_payment_to_tracker(doc, method):
     for ref in doc.references:
         if ref.reference_doctype == "Sales Invoice":
             invoice = ref.reference_name
-            invoice_doc = frappe.get_doc("Sales Invoice", invoice)
+            frappe.logger().debug(f"Fetching Sales Invoice doc: {invoice}")
+            try:
+                invoice_doc = frappe.get_doc("Sales Invoice", invoice)
+            except Exception as e:
+                frappe.msgprint(f"Error fetching Sales Invoice {invoice}: {e}")
+                continue
+
             if not invoice_doc.items or not invoice_doc.items[0].sales_order:
                 continue
 
             sales_order = invoice_doc.items[0].sales_order
+
             tracker = frappe.get_value("Shipment Tracker", {"sales_order": sales_order}, "name")
             if not tracker:
                 continue
 
-            st = frappe.get_doc("Shipment Tracker", tracker)
-            st.payment_entry = doc.name
-            st.shipment_status = "Payment Received"
-            st.save()
-            frappe.db.commit()
+            try:
+                st = frappe.get_doc("Shipment Tracker", tracker)
+                st.payment_entry = doc.name
+                st.shipment_status = "Payment Received"
+                st.save()
+                frappe.db.commit()
+                frappe.logger().debug(f"Shipment Tracker {tracker} updated with payment_entry {doc.name} and status 'Payment Received'")
+            except Exception as e:
+                frappe.logger().error(f"Error updating Shipment Tracker {tracker}: {e}")
+                frappe.msgprint(f"Error updating Shipment Tracker {tracker}: {e}")
+
