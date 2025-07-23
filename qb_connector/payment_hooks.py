@@ -5,46 +5,38 @@ import os
 def sync_payment_entry_to_qbo(doc, method):
     print(f"🚨 Hook triggered for Payment Entry: {doc.name}")
     frappe.logger().info(f"🚨 Hook triggered for Payment Entry: {doc.name}")
+    if not doc.custom_dont_sync_with_qbo:
+        try:
+            print("🔧 Starting QBO script execution...")
+            payment_id = run_qbo_script("syncPaymentToQbo.ts", doc.name)
 
-    try:
-        print("🔧 Starting QBO script execution...")
-        payment_id = run_qbo_script("syncPaymentToQbo.ts", doc.name)
+            if payment_id:
+                status = "Synced"
+                frappe.db.set_value("Payment Entry", doc.name, "custom_dont_sync_with_qbo", 1)
 
-        if payment_id:
-            status = "Synced"
+            else:
+                status = "Failed"
+
+            print(f"📨 Enqueuing sync status update → {status}")
+            if payment_id:
+                frappe.enqueue("qb_connector.payment_hooks.mark_qbo_sync_status",
+                    doctype=doc.doctype,
+                    docname=doc.name,
+                    status=status,
+                    payment_id=payment_id)
+            else:
+                frappe.enqueue("qb_connector.payment_hooks.mark_qbo_sync_status",
+                    doctype=doc.doctype,
+                    docname=doc.name,
+                    status=status)
+
+            print(f"🧾 Enqueued Payment Entry sync status update for {doc.name}")
+            frappe.logger().info(f"🧾 Enqueued Payment Entry sync status update → {status}")
+        except Exception as e:
+            print(f"❌ Error in sync_payment_entry_to_qbo: {e}")
+            frappe.logger().error(f"❌ Payment Entry sync failed: {str(e)}")
         else:
-            status = "Failed"
-
-        print(f"📨 Enqueuing sync status update → {status}")
-        if payment_id:
-            frappe.enqueue("qb_connector.payment_hooks.mark_qbo_sync_status",
-                doctype=doc.doctype,
-                docname=doc.name,
-                status=status,
-                payment_id=payment_id)
-        else:
-            frappe.enqueue("qb_connector.payment_hooks.mark_qbo_sync_status",
-                doctype=doc.doctype,
-                docname=doc.name,
-                status=status)
-
-        print(f"🧾 Enqueued Payment Entry sync status update for {doc.name}")
-        frappe.logger().info(f"🧾 Enqueued Payment Entry sync status update → {status}")
-    except Exception as e:
-        print(f"❌ Error in sync_payment_entry_to_qbo: {e}")
-        frappe.logger().error(f"❌ Payment Entry sync failed: {str(e)}")
-
-@frappe.whitelist()
-def sync_payments_from_qbo():
-    try:
-        success = run_qbo_script("syncQboPaymentsToFrappe.ts")
-        print(f"✅ Script execution completed. Success: {success}")
-        status = "Synced" if success else "Failed"
-        print(f"📨 Enqueuing sync status update → {status}")
-        frappe.logger().info(f"🧾 Enqueued Payment Entry sync status update → {status}")
-    except Exception as e:
-        print(f"❌ Error in sync_payment_entry_to_qbo: {e}")
-        frappe.logger().error(f"❌ Payment Entry sync failed: {str(e)}")
+            print("Skipped because of custom_dont_sync_with_qbo")
 
 @frappe.whitelist()
 def retry_failed_payment_syncs():
