@@ -91,8 +91,16 @@ createDoc: async <T = any>(doctype: string, doc: Partial<T>): Promise<T> => {
   return (response.data as { data: T }).data;
 },
 submitDoc: async (doctype: string, name: string): Promise<void> => {
-  const url = `${baseUrl}/api/resource/${doctype}/${name}`;
-  await axios.put(url, { docstatus: 1 }, axiosConfig());
+  // Re-fetch latest document before submitting to get a fresh timestamp
+  const latestDoc = await frappe.getDoc(doctype, name);
+
+  const url = `${baseUrl}/api/method/frappe.client.submit`;
+  await axios.post(
+    url,
+    { doc: latestDoc },
+    axiosConfig()
+  );
 }
+
 
 };
