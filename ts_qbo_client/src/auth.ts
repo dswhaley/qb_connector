@@ -1,5 +1,8 @@
 // src/auth.ts
 
+// This file handles QuickBooks Online OAuth2 authentication and token management for ERPNext integration.
+
+// Imports for Intuit OAuth, Frappe API, type mapping, UUID, environment, and date handling
 import IntuitOAuth from 'intuit-oauth';
 import { frappe } from './frappe';
 import { QuickBooksSettings } from './types';
@@ -8,17 +11,27 @@ import { v4 as uuidv4 } from 'uuid';
 import dotenv from 'dotenv';
 import dayjs from 'dayjs';
 
+// Load environment variables from .env file
 dotenv.config();
 
 // Expected .env entries:
 // QBO_ENV=sandbox | production
 
+/**
+ * Class for handling QuickBooks OAuth2 authentication and token management.
+ */
 export class QuickBooksAuth {
+  /**
+   * Intuit OAuth client instance
+   */
   private authClient: IntuitOAuth;
 
+  /**
+   * Constructs a QuickBooksAuth instance with given settings.
+   * @param settings - QuickBooksSettings object
+   */
   constructor(settings: QuickBooksSettings) {
     const environment = process.env.QBO_ENV || 'sandbox';
-
     this.authClient = new IntuitOAuth({
       clientId: settings.clientId,
       clientSecret: settings.clientSecret,
@@ -29,6 +42,7 @@ export class QuickBooksAuth {
 
   /**
    * Builds the QuickBooks OAuth2 login URL.
+   * @returns The OAuth2 authorization URL for QuickBooks login.
    */
   async initiateAuth(): Promise<string> {
     const url = this.authClient.authorizeUri({
@@ -40,6 +54,10 @@ export class QuickBooksAuth {
 
   /**
    * Handles the OAuth2 callback from QuickBooks.
+   * Exchanges code for tokens and updates settings in Frappe.
+   * @param code - OAuth2 code from QuickBooks
+   * @param realmId - QuickBooks company ID
+   * @param state - Optional state parameter
    */
   async handleCallback(code: string, realmId: string, state?: string): Promise<void> {
     try {
@@ -85,7 +103,7 @@ export class QuickBooksAuth {
   }
 
   /**
-   * Refreshes the QuickBooks access token.
+   * Refreshes the QuickBooks access token using the stored refresh token.
    */
   async refreshToken(): Promise<void> {
     const ts = new Date().toISOString();
@@ -122,7 +140,8 @@ export class QuickBooksAuth {
 }
 
 /**
- * Returns QBO request headers with auth token
+ * Returns QBO request headers with auth token for API calls.
+ * @returns Object containing Authorization, Accept, and Content-Type headers.
  */
 export async function getQboAuthHeaders(): Promise<{
   Authorization: string;
@@ -144,6 +163,10 @@ export async function getQboAuthHeaders(): Promise<{
   };
 }
 
+/**
+ * Returns the QuickBooks realmId from settings.
+ * @returns The QuickBooks company realmId string.
+ */
 export async function getRealmId(): Promise<string>{
   const rawSettings = await frappe.getDoc('QuickBooks Settings', 'QuickBooks Settings');
 
@@ -156,7 +179,8 @@ export async function getRealmId(): Promise<string>{
   return settings.realmId;
 }
 /**
- * Returns correct QBO API base URL based on environment
+ * Returns correct QBO API base URL based on environment and realmId.
+ * @returns The full QBO API base URL for the current environment and company.
  */
 export async function getQboBaseUrl(): Promise<string> {
   const rawSettings = await frappe.getDoc('QuickBooks Settings', 'QuickBooks Settings');

@@ -1,174 +1,13 @@
-// import dotenv from "dotenv";
-// import axios from "axios";
-// import { frappe } from "./frappe";
-// import { getQboAuthHeaders, getQboBaseUrl } from "./auth";
-
-// dotenv.config();
-
-// interface QboPayment {
-//   Id: string;
-//   TotalAmt: number;
-//   TxnDate: string;
-//   Line: {
-//     LinkedTxn?: {
-//       TxnId: string;
-//       TxnType: "Invoice";
-//     }[];
-//   }[];
-// }
-
-// interface QboPaymentResponse {
-//   QueryResponse?: {
-//     Payment?: QboPayment[];
-//   };
-// }
-
-// interface FrappePaymentEntryPayload {
-//   payment_type: "Receive";
-//   party_type: "Customer";
-//   party: string;
-//   posting_date: string;
-//   paid_amount: number;
-//   received_amount: number;
-//   paid_to: string;
-//   mode_of_payment: string;
-//   references: {
-//     reference_doctype: string;
-//     reference_name: string;
-//     allocated_amount: number;
-//   }[];
-//   custom_qbo_payment_id: string;
-//   custom_sync_status?: string; // Adding the custom_sync_status field
-// }
-
-// interface FrappeDocCreateResponse {
-//   name: string;
-//   [key: string]: any;
-// }
-
-// async function fetchQboPaymentsPaginated(): Promise<QboPayment[]> {
-//   const baseUrl = await getQboBaseUrl();
-//   const headers = await getQboAuthHeaders();
-//   let payments: QboPayment[] = [];
-//   let start = 1;
-
-//   while (true) {
-//     const query = `SELECT Id, TxnDate, TotalAmt, Line FROM Payment STARTPOSITION ${start} MAXRESULTS 1000`;
-//     const response = await axios.get(`${baseUrl}/query`, {
-//       params: { query },
-//       headers,
-//     });
-
-//     const data = response.data as QboPaymentResponse;
-//     const batch = data.QueryResponse?.Payment || [];
-//     payments = payments.concat(batch);
-
-//     if (batch.length < 1000) break; // Done paginating
-//     start += 1000;
-//   }
-
-//   return payments;
-// }
-
-// async function main() {
-//   const allPayments = await fetchQboPaymentsPaginated();
-
-//   for (const payment of allPayments) {
-//     for (const line of payment.Line || []) {
-//       for (const txn of line.LinkedTxn || []) {
-//         if (txn.TxnType !== "Invoice") continue;
-
-//         const qboInvoiceId = txn.TxnId;
-
-//         // Find matching ERPNext Sales Invoice
-//         const frappeInvoices = await frappe.getAllFiltered("Sales Invoice", {
-//           filters: {
-//             custom_qbo_sales_invoice_id: qboInvoiceId,
-//             docstatus: 1,
-//           },
-//           fields: ["name", "customer", "outstanding_amount"],
-//           limit: 1,
-//         });
-
-//         if (!frappeInvoices.length) continue;
-
-//         const frappeInvoice = frappeInvoices[0];
-
-//         // Skip if already synced
-//         const existing = await frappe.getAllFiltered("Payment Entry", {
-//           filters: {
-//             custom_qbo_payment_id: payment.Id,
-//           },
-//           limit: 1,
-//         });
-
-//         if (existing.length > 0) {
-//           console.log(`✅ QBO Payment ${payment.Id} already synced.`);
-//           continue;
-//         }
-
-//         console.log(`💸 Creating Payment Entry for QBO Payment ID: ${payment.Id}`);
-
-//         const paymentEntry: FrappePaymentEntryPayload & {
-//           reference_no: string;
-//           reference_date: string;
-//         } = {
-//           payment_type: "Receive",
-//           party_type: "Customer",
-//           party: frappeInvoice.customer,
-//           posting_date: payment.TxnDate,
-//           paid_amount: payment.TotalAmt,
-//           received_amount: payment.TotalAmt,
-//           paid_to: "Bank Account - F",
-//           mode_of_payment: "Cash",
-//           reference_no: payment.Id,
-//           reference_date: payment.TxnDate,
-//           references: [
-//             {
-//               reference_doctype: "Sales Invoice",
-//               reference_name: frappeInvoice.name,
-//               allocated_amount: payment.TotalAmt,
-//             },
-//           ],
-//           custom_qbo_payment_id: payment.Id,
-//           custom_sync_status: "Pending", // Initially set to Pending
-//         };
-
-//         try {
-//           console.log("📤 Payload sent to Frappe:", JSON.stringify(paymentEntry, null, 2));
-//           const created = await frappe.createDoc<FrappeDocCreateResponse>("Payment Entry", paymentEntry);
-//           const createdName = created.name;
-
-//           // Update the custom_sync_status field before submitting
-//           created.custom_sync_status = "Synced"; // Set sync status to "Synced"
-
-//           // ✅ Submit the newly created Payment Entry
-//           await frappe.submitDoc("Payment Entry", createdName);
-
-//           console.log(`✅ Created and submitted Payment Entry ${createdName} for ${frappeInvoice.name}`);
-//           console.log(`✅ Created Payment Entry ${created.name} for ${frappeInvoice.name}`);
-//         } catch (err: any) {
-//           console.error("❌ Error creating Payment Entry:", err.response?.data || err.message);
-//         }
-//       }
-//     }
-//   }
-
-//   console.log("🎉 QBO payment sync completed.");
-// }
-
-// main();
-// src/syncQboPaymentsToErp.ts
-
-// src/syncSingleQboPayment.ts
-
+// syncSingleQboPayment.ts
+// Imports for environment variables, HTTP requests, Frappe API, and QBO authentication
 import dotenv from "dotenv";
-dotenv.config();
+dotenv.config(); // Load environment variables
 
 import axios from "axios";
 import { frappe } from "./frappe";
 import { getQboAuthHeaders, getQboBaseUrl } from "./auth";
 
+// Type for QBO Payment
 interface QboPayment {
   Id: string;
   TotalAmt: number;
@@ -181,6 +20,7 @@ interface QboPayment {
   }[];
 }
 
+// Type for Frappe Payment Entry payload
 interface FrappePaymentEntryPayload {
   payment_type: "Receive";
   party_type: "Customer";
@@ -200,18 +40,22 @@ interface FrappePaymentEntryPayload {
   custom_dont_sync_with_qbo?: number;
 }
 
+// Type for Frappe document creation response
 interface FrappeDocCreateResponse {
   name: string;
   [key: string]: any;
 }
 
+// Main function to sync a single QBO Payment to ERPNext
 export async function syncSingleQboPayment(paymentId: string) {
   try {
     console.log(`🔔 Starting sync for QBO Payment ID: ${paymentId}`);
 
+    // Get QBO API base URL and auth headers
     const baseUrl = await getQboBaseUrl();
     const headers = await getQboAuthHeaders();
 
+    // Fetch payment details from QBO
     const url = `${baseUrl}/payment/${paymentId}`;
     console.log(`🌐 Fetching QBO Payment from: ${url}`);
 
@@ -224,22 +68,27 @@ export async function syncSingleQboPayment(paymentId: string) {
     }
     console.log(`✅ Found QBO Payment: ID=${paymentId}, Amount=${payment.TotalAmt}, Date=${payment.TxnDate}`);
 
+    // Ensure payment has line items
     if (!payment.Line || payment.Line.length === 0) {
       console.log(`⚠️ Payment ID ${payment.Id} has no Line items.`);
       return;
     }
 
+    // Iterate over each line in the payment
     for (const [lineIndex, line] of payment.Line.entries()) {
       console.log(`➡️ Processing Line ${lineIndex + 1} of Payment ${paymentId}`);
 
+      // Skip lines without linked transactions
       if (!line.LinkedTxn || line.LinkedTxn.length === 0) {
         console.log(`⚠️ Line ${lineIndex + 1} has no linked transactions.`);
         continue;
       }
 
+      // Iterate over each linked transaction
       for (const [txnIndex, txn] of line.LinkedTxn.entries()) {
         console.log(`  🔗 LinkedTxn ${txnIndex + 1}: TxnId=${txn.TxnId}, TxnType=${txn.TxnType}`);
 
+        // Only process invoices
         if (txn.TxnType !== "Invoice") {
           console.log(`  ⚠️ Skipping LinkedTxn ${txnIndex + 1} as it is not an Invoice.`);
           continue;
@@ -279,7 +128,7 @@ export async function syncSingleQboPayment(paymentId: string) {
           continue;
         }
 
-        // Optional: Also check if invoice is fully paid, skip if so (additional safety)
+        // Optional: Also check if invoice is fully paid, skip if so
         if (frappeInvoice.outstanding_amount <= 0) {
           console.log(`  ⚠️ ERPNext Sales Invoice ${frappeInvoice.name} is already fully paid. Skipping Payment Entry creation.`);
           continue;
@@ -287,7 +136,7 @@ export async function syncSingleQboPayment(paymentId: string) {
 
         console.log(`The Invoice name is ${frappeInvoice.name}`);
 
-        // Build Payment Entry payload
+        // Build Payment Entry payload for ERPNext
         const paymentEntry: FrappePaymentEntryPayload & {
           reference_no: string;
           reference_date: string;
@@ -314,6 +163,7 @@ export async function syncSingleQboPayment(paymentId: string) {
           custom_dont_sync_with_qbo: 1,
         };
 
+        // Log payload for debugging
         console.log("  📤 Payload sent to Frappe:", JSON.stringify(paymentEntry, null, 2));
 
         // Create Payment Entry in ERPNext
@@ -333,10 +183,12 @@ export async function syncSingleQboPayment(paymentId: string) {
 
     console.log(`🎉 QBO payment sync completed for Payment ID: ${paymentId}`);
   } catch (err: any) {
+    // Error handling for sync failures
     console.error("❌ Error syncing payment:", err.response?.data || err.message || err);
   }
 }
 
+// Runner so you can run this file directly via ts-node
 // Runner so you can run this file directly via ts-node
 if (require.main === module) {
   if (process.argv.length < 3) {

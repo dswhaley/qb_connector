@@ -1,29 +1,42 @@
 // src/syncCustomersToQbo.ts
 
+// Import Frappe API wrapper
 import { frappe } from '../frappe';
+// Import function to sync a single customer to QBO
 import { syncCustomerToQbo } from './syncCustomerToQbo';
 
+/**
+ * Interface representing a Frappe customer for batch sync
+ */
 interface Customer {
-  name: string;
-  customer_name: string;
-  custom_qbo_sync_status?: string;
+  name: string; // Frappe document name
+  customer_name: string; // Customer display name
+  custom_qbo_sync_status?: string; // QBO sync status
 }
 
+/**
+ * Main batch sync function for customers
+ */
 async function main() {
+  // Fetch all customers from Frappe
   const allCustomers = await frappe.getAll<Customer>('Customer');
 
+  // Filter out customers that are already synced
   const toSync = allCustomers.filter(
     (cust) => cust.custom_qbo_sync_status !== 'Synced'
   );
 
+  // Log how many customers need syncing
   console.log(`🔄 Found ${toSync.length} customers to sync\n`);
 
+  // Initialize report object to track results
   const report = {
-    matched: [] as string[],
-    notFound: [] as string[],
-    failed: [] as { name: string; reason: string }[],
+    matched: [] as string[], // Successfully matched and synced
+    notFound: [] as string[], // No QBO match found
+    failed: [] as { name: string; reason: string }[], // Sync failures
   };
 
+  // Iterate through each customer to sync
   for (const customer of toSync) {
     try {
       const result = await syncCustomerToQbo(customer.name);
