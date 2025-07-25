@@ -316,25 +316,39 @@ def fetch_invoice(invoice_id: str, realm_id: str) -> Optional[dict]:
         print("❌ Unexpected error fetching")
 
 def run_qbo_script(script_name: str, docname: str = None) -> str | None:
+    """
+    Runs a Node.js TypeScript script to sync a Payment or Invoice to Frappe from QBO.
+    Returns True if successful, False otherwise.
+    Args:
+        script_name (str): The TypeScript script filename to run.
+        docname (str, optional): The document name or QBO ID to sync.
+    Returns:
+        bool: True if sync succeeded, False otherwise.
+    """
     try:
+        # Get the absolute path of the current file
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        app_root = os.path.abspath(os.path.join(current_dir, "..", ".."))  # up two levels
+        # Go up two levels to the app root
+        app_root = os.path.abspath(os.path.join(current_dir, "..", ".."))
+        # Build the path to the TypeScript client source directory
         script_dir = os.path.join(app_root, "ts_qbo_client", "src")
+        # Build the full path to the script to run
         script_path = os.path.join(script_dir, script_name)
 
-        print(f"🔍 Script path: {script_path}")
+        print(f"🔍 Script path: {script_path}")  # Log the script path for debugging
 
-        # If docname is provided, include it in the command; otherwise, omit it
+        # If a docname is provided, include it as an argument to the script
         if docname:
-            print(f"📦 Running: npx ts-node {script_path} {docname}")
+            print(f"📦 Running: npx ts-node {script_path} {docname}")  # Log the command
             process = subprocess.Popen(
-                ["npx", "ts-node", os.path.basename(script_path), docname],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                cwd=script_dir
+                ["npx", "ts-node", os.path.basename(script_path), docname],  # Only pass the script filename, not the full path
+                stdout=subprocess.PIPE,  # Capture standard output
+                stderr=subprocess.PIPE,  # Capture standard error
+                text=True,               # Return output as string, not bytes
+                cwd=script_dir           # Set working directory to script_dir
             )
         else:
+            # If no docname, just run the script
             print(f"📦 Running: npx ts-node {script_path}")
             process = subprocess.Popen(
                 ["npx", "ts-node", os.path.basename(script_path)],
@@ -344,38 +358,54 @@ def run_qbo_script(script_name: str, docname: str = None) -> str | None:
                 cwd=script_dir
             )
 
+        # Wait for the process to finish and get output
         stdout, stderr = process.communicate()
 
+        # If there is output on stdout, print and log it
         if stdout:
             print(f"📤 STDOUT:\n{stdout}")
             frappe.logger().info(f"[Payment Entry Sync Output] {stdout}")
 
+        # If there is output on stderr, print and log it as error
         if stderr:
             print(f"❗ STDERR:\n{stderr}")
             frappe.logger().error(f"[Payment Entry Sync Error] {stderr}")
 
+        # Return True if the process exited with code 0 (success), else False
         return process.returncode == 0
 
     except Exception as e:
+        # Catch any exception, print and log it
         print(f"❌ Exception during script execution: {e}")
         frappe.logger().error(f"❌ Exception in run_qbo_script: {str(e)}")
         return False
 
+
 def mark_qbo_sync_status(doctype: str, docname: str, status: str, payment_id: str = None):
-    """Set last_synced and sync_status after QBO update."""
+    """
+    Sets last_synced and sync_status after QBO update for Payment Entry or Invoice.
+    Also updates the custom_qbo_payment_id if provided.
+    Args:
+        doctype (str): The DocType name (should be 'Payment Entry' or 'Sales Invoice').
+        docname (str): The name of the document.
+        status (str): The sync status ('Synced' or 'Failed').
+        payment_id (str, optional): The QBO Payment ID if available.
+    """
     try:
+        # Fetch the document from the database
         doc = frappe.get_doc(doctype, docname)
+        # Set the sync status field
         doc.db_set("custom_sync_status", status)
+        # If the sync failed, show a message to the user
         if status != "Synced":
             frappe.msgprint(f"Failed to Sync: {status}")
-        # Only update the custom_qbo_sales_invoice_id if invoice_id is provided
+        # If a payment_id is provided, update the custom_qbo_payment_id field
         if payment_id:
             doc.db_set("custom_qbo_payment_id", payment_id)
-        
-        # Save the document with the updated fields
+        # Save the document to persist changes
         doc.save()
-
     except Exception as e:
+        # Log and print any error that occurs
         frappe.logger().error(f"❌ Failed to update sync status for {doctype} {docname}: {str(e)}")
         print(f"❌ Error in mark_qbo_sync_status: {e}")
 
