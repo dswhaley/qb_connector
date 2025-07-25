@@ -1,6 +1,16 @@
 import frappe
 
+# shipment_hooks.py
+# Hooks and helpers for creating and updating Shipment Tracker documents based on Sales Orders, Invoices, and Payments.
+
 def create_shipment_tracker(doc, method):
+    """
+    Creates a Shipment Tracker document when a Sales Order is submitted, if one does not already exist.
+    Links the tracker to the customer and organization type.
+    Args:
+        doc: The Sales Order document being submitted.
+        method: The event method triggering the hook.
+    """
     if frappe.db.exists("Shipment Tracker", {"sales_order": doc.name}):
         return  # Already created
     customer_name = doc.customer
@@ -27,10 +37,18 @@ def create_shipment_tracker(doc, method):
     tracker.organization = customer.name
     set_organization_info(tracker, organization_type, customer.name)
     
-    tracker.insert()
-    frappe.db.commit()
+    tracker.insert()  # Insert the new Shipment Tracker into the database
+    frappe.db.commit()  # Commit the transaction to persist changes
+
 
 def set_organization_info(tracker, organization_type, customer_name):
+    """
+    Sets organization-related shipping address fields on the Shipment Tracker.
+    Args:
+        tracker: The Shipment Tracker document being updated.
+        organization_type (str): Either 'Camp' or 'Other Organization'.
+        customer_name (str): The name of the customer.
+    """
     organization = frappe.get_doc(organization_type, customer_name)
     tracker.order_id = organization.organization_order_id
     tracker.street_address_line_1 = organization.street_address_line_1_shipping_address
@@ -43,6 +61,12 @@ def set_organization_info(tracker, organization_type, customer_name):
 
 
 def link_invoice_to_tracker(doc, method):
+    """
+    Links a submitted Sales Invoice to the corresponding Shipment Tracker, updating its status.
+    Args:
+        doc: The Sales Invoice document being submitted.
+        method: The event method triggering the hook.
+    """
     if not doc.items or not doc.items[0].sales_order:
         return
 
@@ -54,10 +78,17 @@ def link_invoice_to_tracker(doc, method):
     st = frappe.get_doc("Shipment Tracker", tracker)
     st.sales_invoice = doc.name
     st.shipment_status = "Invoice Sent"
-    st.save()
-    frappe.db.commit()
+    st.save()  # Save changes to Shipment Tracker
+    frappe.db.commit()  # Commit the transaction
+
 
 def link_payment_to_tracker(doc, method):
+    """
+    Links a submitted Payment Entry to the corresponding Shipment Tracker, updating its status.
+    Args:
+        doc: The Payment Entry document being submitted.
+        method: The event method triggering the hook.
+    """
     for ref in doc.references:
         if ref.reference_doctype == "Sales Invoice":
             invoice = ref.reference_name
@@ -81,8 +112,8 @@ def link_payment_to_tracker(doc, method):
                 st = frappe.get_doc("Shipment Tracker", tracker)
                 st.payment_entry = doc.name
                 st.shipment_status = "Payment Received"
-                st.save()
-                frappe.db.commit()
+                st.save()  # Save changes to Shipment Tracker
+                frappe.db.commit()  # Commit the transaction
                 frappe.logger().debug(f"Shipment Tracker {tracker} updated with payment_entry {doc.name} and status 'Payment Received'")
             except Exception as e:
                 frappe.logger().error(f"Error updating Shipment Tracker {tracker}: {e}")

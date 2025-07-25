@@ -3,15 +3,26 @@ import subprocess
 import os
 from frappe.utils import now_datetime
 
+# qbo_hooks.py
+# Hooks and helpers for syncing Item cost/price and tax templates to QuickBooks Online (QBO).
+
 def sync_qbo_cost_on_update(doc, method):
-    #Seperate method that needs to be called for sales taxes before save
+    """
+    Syncs the cost (valuation_rate) of an Item to QBO if it has changed.
+    Also sets the item tax template before saving.
+    Args:
+        doc: The Item document being updated.
+        method: The event method triggering the hook.
+    """
+    # Set tax template before save
     set_item_tax_template(doc, method)
 
-
     try:
+        # Store original doc for comparison if not already present
         if not hasattr(doc, "_original"):
             doc._original = frappe.get_doc(doc.doctype, doc.name)
 
+        # Only sync if valuation_rate has changed and QBO item ID is present
         if doc.valuation_rate != doc._original.valuation_rate and doc.custom_qbo_item_id:
             frappe.logger().info(f"🔁 Detected valuation_rate change for Item {doc.name}")
             success = run_qbo_script("updateQboCost.ts", doc.name, str(doc.valuation_rate))
@@ -30,10 +41,18 @@ def sync_qbo_cost_on_update(doc, method):
 
 
 def sync_qbo_price_on_update(doc, method):
+    """
+    Syncs the price (price_list_rate) of an Item Price to QBO if it has changed.
+    Args:
+        doc: The Item Price document being updated.
+        method: The event method triggering the hook.
+    """
     try:
+        # Store original doc for comparison if not already present
         if not hasattr(doc, "_original"):
             doc._original = frappe.get_doc(doc.doctype, doc.name)
 
+        # Only sync if price_list_rate has changed
         if doc.price_list_rate != doc._original.price_list_rate:
             item = frappe.get_doc("Item", doc.item_code)
             if item.custom_qbo_item_id:
@@ -50,29 +69,44 @@ def sync_qbo_price_on_update(doc, method):
 
 
 def mark_qbo_sync_status(doctype: str, docname: str, status: str, invoice_id: str = None):
-    """Set last_synced and sync_status after QBO update."""
+    """
+    Sets last_synced and sync_status after QBO update for Item or Item Price.
+    Also updates the custom_qbo_sales_invoice_id if provided.
+    Args:
+        doctype (str): The DocType name (should be 'Item' or 'Item Price').
+        docname (str): The name of the document.
+        status (str): The sync status ('Synced' or 'Failed').
+        invoice_id (str, optional): The QBO Invoice ID if available.
+    """
     try:
         doc = frappe.get_doc(doctype, docname)
         doc.db_set("custom_last_synced_at", now_datetime())
         doc.db_set("custom_sync_status", status)
         if status != "Synced":
             frappe.msgprint(f"Failed to Sync: {status}")
-        
         # Only update the custom_qbo_sales_invoice_id if invoice_id is provided
         if invoice_id:
             doc.db_set("custom_qbo_sales_invoice_id", invoice_id)
-        
         # Save the document with the updated fields
         doc.save()
-
     except Exception as e:
         frappe.logger().error(f"❌ Failed to update sync status for {doctype} {docname}: {str(e)}")
         print(f"❌ Error in mark_qbo_sync_status: {e}")
 
 
 def run_qbo_script(script_name: str, item_name: str, new_value: str) -> bool:
-    """Run a TypeScript script via subprocess and return True on success."""
+    """
+    Runs a Node.js TypeScript script to sync Item cost or price to QBO.
+    Returns True if successful, False otherwise.
+    Args:
+        script_name (str): The TypeScript script filename to run.
+        item_name (str): The name of the Item document to sync.
+        new_value (str): The new value to set (cost or price).
+    Returns:
+        bool: True if sync succeeded, False otherwise.
+    """
     try:
+        # Determine the script directory and path
         current_dir = os.path.dirname(os.path.abspath(__file__))
         app_root = os.path.abspath(os.path.join(current_dir, ".."))
         script_dir = os.path.join(app_root, "ts_qbo_client", "src")
@@ -102,9 +136,13 @@ def run_qbo_script(script_name: str, item_name: str, new_value: str) -> bool:
         frappe.logger().error(f"❌ Failed to run script {script_name}: {str(e)}")
         return False
 
+
 def set_item_tax_template(doc, method):
     """
-    Set item_tax_template based on custom tax_category field.
+    Sets the item_tax_template field based on the custom tax_category field.
+    Args:
+        doc: The Item document being updated.
+        method: The event method triggering the hook.
     """
     if hasattr(doc, "tax_category"):
         if doc.tax_category == "Taxable":
@@ -114,7 +152,9 @@ def set_item_tax_template(doc, method):
 
 @frappe.whitelist()
 def sync_items_from_qbo():
-    """Trigger item sync via background job."""
+    """
+    Triggers a background job to sync items from QBO to ERPNext.
+    """
     print("✅ Enqueuing sync_items_from_qbo")
     frappe.logger().info("✅ Enqueuing sync_items_from_qbo")
 
@@ -123,7 +163,12 @@ def sync_items_from_qbo():
         timeout=600,
         now=False
         )
+
 def run_item_sync_script():
+    """
+    Runs the TypeScript script to sync items from QBO to ERPNext.
+    Logs output and errors for review.
+    """
     ts_client_path = os.path.join(frappe.get_app_path("qb_connector"), "..", "ts_qbo_client")
 
     try:
