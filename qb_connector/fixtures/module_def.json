@@ -1,21 +1,21 @@
 [
  {
-  "app_name": "erpnext",
+  "app_name": "qb_connector",
   "custom": 0,
   "docstatus": 0,
   "doctype": "Module Def",
-  "modified": "2025-06-27 11:17:44.080723",
+  "modified": "2025-07-25 14:07:42.363367",
   "module_name": "Order Tracker",
   "name": "Order Tracker",
   "package": null,
   "restrict_to_domain": null
  },
  {
-  "app_name": "erpnext",
+  "app_name": "qb_connector",
   "custom": 0,
   "docstatus": 0,
   "doctype": "Module Def",
-  "modified": "2025-06-27 11:16:49.809003",
+  "modified": "2025-07-25 14:07:37.432619",
   "module_name": "QB",
   "name": "QB",
   "package": null,
