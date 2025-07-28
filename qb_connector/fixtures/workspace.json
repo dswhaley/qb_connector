@@ -1,6 +1,6 @@
 [
  {
-  "app": "erpnext",
+  "app": "camp_manager",
   "charts": [],
   "content": "[{\"id\":\"bKVs4bmDdh\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Shipments</span>\",\"col\":12}},{\"id\":\"fGKXu29X1k\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Shipment Lists\",\"col\":3}}]",
   "custom_blocks": [],
@@ -46,7 +46,7 @@
   "type": "Workspace"
  },
  {
-  "app": "erpnext",
+  "app": "camp_manager",
   "charts": [],
   "content": "[{\"id\":\"DAnTpSr2LP\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Taxes</span>\",\"col\":12}},{\"id\":\"ES1j4tFgyB\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"State Tax Information\",\"col\":3}}]",
   "custom_blocks": [],

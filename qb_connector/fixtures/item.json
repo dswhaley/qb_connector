@@ -58,11 +58,11 @@
     "default_price_list": null,
     "default_provisional_account": null,
     "default_supplier": null,
-    "default_warehouse": "Stores - F",
+    "default_warehouse": "Stores",
     "deferred_expense_account": null,
     "deferred_revenue_account": null,
     "expense_account": null,
-    "income_account": "Sales - F",
+    "income_account": "Sales",
     "selling_cost_center": null
    }
   ],
