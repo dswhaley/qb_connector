@@ -88,7 +88,6 @@ def test_scheduler_job():
     frappe.logger().info("✅ test_scheduler_job executed successfully")
 
 
-
 def customer_update_handler(doc, method):
     """
     Handles updates to Customer documents before save.
@@ -99,8 +98,11 @@ def customer_update_handler(doc, method):
         method: The event method triggering the handler.
     """
     # Check if all required fields and links are present for QBO sync
+    print(f"Camp link: {doc.custom_camp_link}\nOrganization link: {doc.custom_other_organization_link}\nEmail: {doc.custom_email}\nPhone: {doc.custom_phone}\nStreet Address: {doc.custom_street_address_line_1}\nCity: {doc.custom_city}\nState: {doc.custom_state}\nZip Code: {doc.custom_zip_code}\nCountry: {doc.custom_country}\nTax Status: {doc.custom_tax_status}\nTax Exemption Number: {doc.custom_tax_exemption_number}\nQBO Sync Status: {doc.custom_qbo_sync_status}")
     if (doc.custom_camp_link or doc.custom_other_organization_link) and doc.custom_email and doc.custom_phone and doc.custom_street_address_line_1 and doc.custom_city and doc.custom_state and doc.custom_zip_code and doc.custom_country and (doc.custom_tax_status == "Taxed" or (doc.custom_tax_status == "Exempt" and doc.custom_tax_exemption_number) and doc.custom_qbo_sync_status != "Synced"):
         doc.custom_create_customer_in_qbo = 1
+    else:
+        return
     if doc.custom_create_customer_in_qbo == 0:
         doc.custom_create_customer_in_qbo = 0
         return
@@ -136,37 +138,57 @@ def customer_update_handler(doc, method):
 
     print(f"Sync Status: {doc.custom_qbo_sync_status}")
     if doc.custom_qbo_sync_status != "Synced":
-        try:
-            # Call Node.js server to create customer in QBO
-            response = requests.post(
-                "http://localhost:3000/api/handle-customer-create",
-                json={"customer_name": doc.name},
-                timeout=5
-            )
-
-            if response.status_code != 200:
-                doc.custom_create_customer_in_qbo = 0
-                frappe.msgprint(f"❌ Failed to sync with QBO (HTTP {response.status_code})")
-                return
-
-            result = response.json()
-
-            # Apply returned values to the doc
-            doc.custom_qbo_sync_status = result.get("custom_qbo_sync_status", "Unknown")
-            doc.custom_qbo_customer_id = result.get("custom_qbo_customer_id") or ""
-            doc.custom_last_synced_at = result.get("custom_last_synced_at") or ""
-
-            if doc.custom_qbo_sync_status == "Synced":
-                frappe.msgprint(f"✅ Successfully synced {doc.name} to QBO.")
-                doc.custom_customer_exists_in_qbo = 1
-                doc.custom_create_customer_in_qbo = 0
-            else:
-                frappe.msgprint(f"⚠️ QBO Sync Result for {doc.name}: {doc.custom_qbo_sync_status}")
-            doc.save(ignore_permissions=True)
-        except Exception as e:
-            doc.custom_qbo_sync_status = "Failed"
-            doc.custom_create_customer_in_qbo = 0
-            frappe.log_error(f"Error during QBO sync for {doc.name}: {e}", "QBO Sync Error")
-            frappe.msgprint(f"❌ Exception during QBO sync: {e}")
+        frappe.enqueue("qb_connector.api.sync_with_qbo", queue='default', timeout=300, now=False, doc=doc, is_async=True)
     else:
         doc.custom_create_customer_in_qbo = 0
+
+def sync_with_qbo(doc):
+    try:
+        # Call Node.js server to create customer in QBO
+        
+        response = requests.post(
+            "http://localhost:3000/api/handle-customer-create",
+            json={"customer_name": doc.name},
+            timeout=5
+        )
+
+        if response.status_code != 200:
+            if not doc.custom_qbo_customer_id:
+
+                doc.custom_create_customer_in_qbo = 0
+                frappe.msgprint(f"❌ Failed to sync with QBO (HTTP {response.status_code})")
+            else:
+                doc.custom_qbo_sync_status = "Synced"
+                doc.custom_create_customer_in_qbo = 0
+                frappe.msgprint(f"Customer exists in QBO")
+                doc.save(ignore_permissions=True)
+            return
+
+        result = response.json()
+
+        # Apply returned values to the doc
+        doc.custom_qbo_sync_status = result.get("custom_qbo_sync_status", "Unknown")
+        doc.custom_qbo_customer_id = result.get("custom_qbo_customer_id") or ""
+        doc.custom_last_synced_at = result.get("custom_last_synced_at") or ""
+
+        if doc.custom_qbo_sync_status == "Synced":
+            frappe.msgprint(f"✅ Successfully synced {doc.name} to QBO.")
+            doc.custom_customer_exists_in_qbo = 1
+            doc.custom_create_customer_in_qbo = 0
+            doc.save(ignore_permissions=True)
+        else:
+            frappe.msgprint(f"⚠️ QBO Sync Result for {doc.name}: {doc.custom_qbo_sync_status}")
+    except Exception as e:
+        doc.custom_qbo_sync_status = "Failed"
+        doc.custom_create_customer_in_qbo = 0
+        frappe.log_error(f"Error during QBO sync for {doc.name}: {e}", "QBO Sync Error")
+        frappe.msgprint(f"❌ Exception during QBO sync: {e}")
+        doc.save(ignore_permissions=True)
+
+def announce_synced(doc, method):
+    if not doc.is_new():
+        if not hasattr(doc, "_original"):
+            doc._original = frappe.get_doc(doc.doctype, doc.name)
+        print(f"Original Sync Status: {doc._original.custom_qbo_sync_status} - new Sync Status: {doc.custom_qbo_sync_status}")
+        if doc._original.custom_qbo_sync_status != "Synced" and doc.custom_qbo_sync_status == "Synced":
+            frappe.msgprint(f"✅ Customer {doc.name} has been successfully synced with QuickBooks Online.")
