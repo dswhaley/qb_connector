@@ -37,7 +37,8 @@ fixtures = [
             "Item", 
             "Tax Category", 
             "Payment Entry", 
-            "Sales Order"
+            "Sales Order",
+            "Shipment Tracker"
         ]]]
     },
 
