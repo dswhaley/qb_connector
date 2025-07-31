@@ -9,7 +9,8 @@ import frappe
 import requests
 from dotenv import load_dotenv
 import subprocess
-
+from datetime import timedelta
+import traceback
 
 @frappe.whitelist(allow_guest=True)
 def handle_qbo_webhook():
@@ -17,7 +18,6 @@ def handle_qbo_webhook():
     Entry point called by Intuit’s webhook.
     Verifies signature, loops through entity events, and triggers sync logic.
     """
-    print("TRYING TO CONNECT WITH WEBHOOK")
     try:
         raw_body: bytes = frappe.request.get_data()
         signature_header: str = frappe.get_request_header("intuit-signature")
@@ -77,8 +77,6 @@ def verify_signature(raw_body: bytes, signature: Optional[str], secret: bytes) -
 
     return hmac.compare_digest(encoded_digest, signature)
 
-def manage_payments(payment_id: str, realm_id: str) -> None:
-    import frappe
 
 def manage_payments(payment_id: str, realm_id: str) -> None:
     """
@@ -104,27 +102,141 @@ def manage_payments(payment_id: str, realm_id: str) -> None:
 
 
 def manage_invoicing(invoice_id: str, realm_id: str) -> None:
+    """
+    Main entry point to sync QBO invoice changes with Frappe Sales Invoice.
+    Cancels and replaces the Frappe invoice if grand totals differ.
+    """
     qbo_invoice = fetch_invoice(invoice_id, realm_id)
     if not qbo_invoice:
         print(f"⚠️ Invoice {invoice_id} could not be fetched from QBO.")
         return
 
-    frappe_invoice = get_sales_invoice_by_qbo_id(invoice_id, qbo_invoice)
-    print(f"Frappe Invoice: {frappe_invoice}")
-    if not frappe_invoice:
+    frappe_invoice = get_sales_invoice_by_qbo_id(invoice_id)
+    if frappe_invoice is None:
         print(f"⚠️ No local Sales Invoice with custom_qbo_sales_invoice_id = {invoice_id}")
+        customer_ref = qbo_invoice.get("CustomerRef", {})
+        customer_id = customer_ref.get("value")
+        customer_name = get_customer_by_qbo_id(customer_id)
+        items = build_items_from_qbo_invoice(qbo_invoice)
+        new_invoice = create_new_sales_invoice(qbo_invoice=qbo_invoice, invoice_id=invoice_id, customer_name=customer_name, items=items, shipment_tracker_name=None)
+        print(f"✅ Created new Sales Invoice {new_invoice.name} for QBO Invoice {invoice_id}")
+        return
+    
+    created_at = frappe_invoice.creation
+    if isinstance(created_at, str):
+        created_at = frappe.utils.get_datetime(created_at)
+    if frappe.utils.now_datetime() - created_at < timedelta(seconds=5):
+        print(f"⏳ Skipping QBO sync for {invoice_id}; invoice just created by us.")
         return
 
-    # Delete existing items using SQL because the invoice is submitted
-    frappe.db.sql("""
-        DELETE FROM `tabSales Invoice Item`
-        WHERE parent=%s AND parenttype='Sales Invoice'
-    """, frappe_invoice.name)
+    qbo_total = float(qbo_invoice.get("TotalAmt", 0))
+    shipment_tracker_name = get_shipment_tracker_for_invoice(frappe_invoice.name)
+    if not is_total_different(frappe_invoice.grand_total, qbo_total):
+        print(f"✅ Invoice {frappe_invoice.name} totals match QBO; no action needed.")
+        return
 
-    quantity = 0
-    net_total = 0
-    # Insert new items based on QBO invoice, using indexed loop for idx
-    for idx, line in enumerate(qbo_invoice.get("Line", []), start=1):
+    if not cancel_and_delete_invoice(frappe_invoice, shipment_tracker_name):
+        return
+
+    items = build_items_from_qbo_invoice(qbo_invoice)
+
+    customer_name = get_customer_by_qbo_id(qbo_invoice.get("CustomerRef", {}).get("value"))
+    if not customer_name:
+        print(f"❌ Customer with QBO ID {qbo_invoice.get('CustomerRef', {}).get('value')} not found in Frappe.")
+        return
+
+    create_new_sales_invoice(qbo_invoice, invoice_id, customer_name, items, shipment_tracker_name)
+
+def get_shipment_tracker_for_invoice(sales_invoice_name):
+    shipment_tracker_name = frappe.db.exists(
+        "Shipment Tracker",
+        {"sales_invoice": sales_invoice_name}
+    )
+    return shipment_tracker_name if shipment_tracker_name else None
+
+def is_total_different(frappe_total: float, qbo_total: float, tolerance: float = 0.01) -> bool:
+    """
+    Check if the Frappe and QBO invoice grand totals differ beyond a small tolerance.
+    """
+    return abs(frappe_total - qbo_total) >= tolerance
+
+def cancel_and_delete_invoice(frappe_invoice: str, shipment_tracker_name: str) -> bool:
+    """
+    Cancels and deletes the given Frappe Sales Invoice, even if it's linked to Payment Ledger Entries and GL Entries.
+    Also unlinks from Shipment Tracker. Does NOT delete the Sales Order.
+    Returns True if successful, False otherwise.
+    """
+    frappe.set_user("Administrator")
+
+    try:
+        # Fetch the full document if only name was passed
+        if isinstance(frappe_invoice, str):
+            invoice = frappe.get_doc("Sales Invoice", frappe_invoice)
+        else:
+            invoice = frappe_invoice
+
+        # Cancel the invoice
+        if invoice.docstatus == 1:
+            invoice.cancel()
+            frappe.db.commit()
+            print(f"✅ Cancelled Sales Invoice {invoice.name}")
+
+        # Remove Payment Ledger Entry links if any
+        linked_ples = frappe.db.get_all(
+            "Payment Ledger Entry",
+            filters={"voucher_no": invoice.name, "voucher_type": "Sales Invoice"},
+            pluck="name"
+        )
+        for ple_name in linked_ples:
+            frappe.delete_doc("Payment Ledger Entry", ple_name, force=True)
+            print(f"🧹 Deleted Payment Ledger Entry: {ple_name}")
+
+        # Remove all GL Entries linked to the Sales Invoice
+        linked_gl_entries = frappe.db.get_all(
+            "GL Entry",
+            filters={"voucher_no": invoice.name, "voucher_type": "Sales Invoice"},
+            pluck="name"
+        )
+        for gl_name in linked_gl_entries:
+            frappe.delete_doc("GL Entry", gl_name, force=True)
+            print(f"🧹 Deleted GL Entry: {gl_name}")
+
+    except Exception as e:
+        print(f"❌ Failed to cancel invoice {frappe_invoice}: {e}")
+        print(traceback.format_exc())
+        return False
+
+    try:
+        # Clear reference from Shipment Tracker, if applicable
+        if shipment_tracker_name and frappe.db.exists("Shipment Tracker", shipment_tracker_name):
+            shipment_tracker = frappe.get_doc("Shipment Tracker", shipment_tracker_name)
+            shipment_tracker.sales_invoice = None
+            shipment_tracker.save(ignore_permissions=True)
+            print(f"🔗 Unlinked from Shipment Tracker: {shipment_tracker_name}")
+
+        # Delete the Sales Invoice forcibly
+        frappe.delete_doc("Sales Invoice", invoice.name, force=True)
+        frappe.db.commit()
+        print(f"✅ Deleted Sales Invoice {invoice.name}")
+        return True
+
+    except Exception as e:
+        print(f"❌ Failed to delete invoice {invoice.name}: {e}")
+        print(traceback.format_exc())
+        return False
+
+
+
+
+
+
+def build_items_from_qbo_invoice(qbo_invoice: dict) -> list:
+    """
+    Builds a list of Sales Invoice items for Frappe based on QBO invoice lines.
+    Skips lines without matching Frappe item.
+    """
+    items = []
+    for line in qbo_invoice.get("Line", []):
         if line.get("DetailType") != "SalesItemLineDetail":
             continue
 
@@ -143,59 +255,78 @@ def manage_invoicing(invoice_id: str, realm_id: str) -> None:
             continue
 
         qty = float(detail.get("Qty", 0))
-        quantity += qty
         rate = float(detail.get("UnitPrice", 0))
         amount = float(line.get("Amount", 0))
-        net_total += amount
 
-        frappe.db.sql("""
-            INSERT INTO `tabSales Invoice Item`
-            (`name`, `parent`, `parenttype`, `parentfield`, `item_code`, `qty`, `rate`, `amount`, `idx`, `creation`, `modified`, `owner`, `docstatus`)
-            VALUES (%s, %s, 'Sales Invoice', 'items', %s, %s, %s, %s, %s, NOW(), NOW(), %s, 1)
-        """, (
-            frappe.generate_hash(length=10),
-            frappe_invoice.name,
-            item_code,
-            qty,
-            rate,
-            amount,
-            idx,
-            "Administrator"
-        ))
-
-    # Update parent totals
-    qbo_total = float(qbo_invoice.get("TotalAmt", 0))
-    qbo_net = get_qbo_invoice_net_total(qbo_invoice)
-    qbo_tax = float(qbo_invoice.get("TxnTaxDetail", {}).get("TotalTax", 0))
-
-    if net_total != 0 and qbo_total and qbo_tax:
-        discount_amount = abs(net_total - (qbo_total - qbo_tax))
-        discount_percentage = round((discount_amount / net_total) * 100)
-    else:
-        discount_amount = 0
-        discount_percentage = 0
-    try:
-        frappe.db.set_value("Sales Invoice", frappe_invoice.name, {
-            "grand_total": qbo_total,
-            "total": net_total,
-            "additional_discount_percentage": discount_percentage,
-            "discount_amount": discount_amount,
-            "net_total": qbo_total - qbo_tax,
-            "total_qty": quantity,
-            "rounded_total": qbo_total,
-            "total_taxes_and_charges": qbo_tax,
-            "base_grand_total": qbo_total,
-            "base_net_total": qbo_net,
-            "base_total_taxes_and_charges": qbo_tax,
-            "outstanding_amount": frappe_invoice.outstanding_amount or 0.0
+        items.append({
+            "item_code": item_code,
+            "qty": qty,
+            "rate": rate,
+            "amount": amount,
         })
+    return items
 
+
+def create_new_sales_invoice(qbo_invoice: dict, invoice_id: str, customer_name: str, items: list, shipment_tracker_name: str) -> None:
+    """
+    Creates and submits a new Sales Invoice in Frappe based on the QBO invoice data.
+    Links the new invoice to the given Sales Order if provided.
+    Sets `custom_dont_sync` to 1 to avoid sync loops.
+    """
+    qbo_total = float(qbo_invoice.get("TotalAmt", 0))
+    qbo_tax = float(qbo_invoice.get("TxnTaxDetail", {}).get("TotalTax", 0))
+    qbo_net = qbo_total - qbo_tax
+    qbo_outstanding = float(qbo_invoice.get("Balance", 0))
+    currency = qbo_invoice.get("CurrencyRef", {}).get("value") or "USD"
+    qbo_discount_rate = get_discount_percent_from_invoice(qbo_invoice)
+    qbo_discount_amount = float(qbo_invoice.get("DiscountAmt", 0))
+    qbo_exchange_rate = float(qbo_invoice.get("ExchangeRate", 1))
+    if qbo_tax > 0:
+        exempt_from_sales_tax = 0
+    else:
+        exempt_from_sales_tax = 1
+
+    new_invoice_doc = frappe.get_doc({
+        "doctype": "Sales Invoice",
+        "customer": customer_name,
+        "currency": currency,
+        "custom_dont_sync": 1,
+        "custom_sync_status": "Synced",
+        "total_taxes_and_charges": qbo_tax,
+        "base_grand_total": qbo_total,
+        "additional_discount_percentage": qbo_discount_rate,
+        "base_total_taxes_and_charges": qbo_tax,
+        "base_rounded_total": qbo_total,
+        "outstanding_amount": qbo_outstanding,
+        "exempt_from_sales_tax": exempt_from_sales_tax,
+        "disable_rounded_total": 1,
+        "custom_qbo_sales_invoice_id": invoice_id,
+        "items": items,
+        "custom_built_from_webhook": 1,
+        "conversion_rate": qbo_exchange_rate,
+        "apply_discount_on": "Net Total",
+    })
+
+    if not exempt_from_sales_tax:
+        tax_rate = qbo_tax / qbo_net * 100 if qbo_net else 0
+        new_invoice_doc.append("taxes", {
+            "charge_type": "On Net Total",
+            "account_head": "ST 6% - F",
+            "description": "Maryland Sales Tax",
+            "rate": tax_rate,
+            })
+    try:
+        new_invoice_doc.insert(ignore_permissions=True)
+        new_invoice_doc.submit()
+
+        if frappe.db.exists("Shipment Tracker", shipment_tracker_name):
+            shipment_tracker = frappe.get_doc("Shipment Tracker", shipment_tracker_name)
+            shipment_tracker.sales_invoice = new_invoice_doc.name
+            shipment_tracker.save(ignore_permissions=True)
         frappe.db.commit()
-        
-        print(f"✅ Synced submitted invoice {frappe_invoice.name} with QBO invoice {invoice_id}")
+        return new_invoice_doc
     except Exception as e:
-        print(f"Failed to update invoice due to: {str(e)}")
-
+        print(f"❌ Failed to create new Sales Invoice: {str(e)}")
 
 
 def get_qbo_invoice_net_total(invoice: dict) -> float:
@@ -206,64 +337,37 @@ def get_qbo_invoice_net_total(invoice: dict) -> float:
     return total
 
 
-def get_sales_invoice_by_qbo_id(invoice_id: str, invoice):
-    name = frappe.get_value(
-        "Sales Invoice", {"custom_qbo_sales_invoice_id": invoice_id}, "name"
+def get_sales_invoice_by_qbo_id(invoice_id: str):
+    invoices = frappe.get_all(
+        "Sales Invoice",
+        filters={"custom_qbo_sales_invoice_id": invoice_id},
+        fields=["name"]
     )
-    if name:
-        return frappe.get_doc("Sales Invoice", name)
+    print(f"Found {len(invoices)} Sales Invoices with custom_qbo_sales_invoice_id = {invoice_id}\n{invoices}")
+    if len(invoices) == 1:
+        return frappe.get_doc("Sales Invoice", invoices[0]["name"])
+    elif len(invoices) == 0:
+        print(f"⚠️ No Sales Invoice found with custom_qbo_sales_invoice_id = {invoice_id}")
+        return None
     else:
-        print("Got to else statement")
-        customer_ref = invoice.get("CustomerRef", {})
-        customer_id = customer_ref.get("value")
-        print(f"Customer id: {customer_id}")
-        customer_name = get_customer_by_qbo_id(customer_id)
-        print(f"Customer name: {customer_name}")
-        if not customer_name:
-            raise ValueError("QBO Customer does not exist in Frappe")
-
-        # 👇 Ensure all required values are defined
-        qbo_total = float(invoice.get("TotalAmt", 0))
-        qbo_tax = float(invoice.get("TxnTaxDetail", {}).get("TotalTax", 0))
-        qbo_net = qbo_total - qbo_tax
-        currency = invoice.get("CurrencyRef", {}).get("value") or "USD"
-
-        print("Making new invoice")
-        try:
-            new_invoice = frappe.get_doc({
-                "doctype": "Sales Invoice",
-                "customer": customer_name,
-                "currency": currency,
-                "conversion_rate": 1.0,
-                "custom_dont_sync": 1,
-                "grand_total": qbo_total,
-                "custom_sync_status": "Synced",
-                "rounded_total": qbo_total,
-                "total_taxes_and_charges": qbo_tax,
-                "base_grand_total": qbo_total,
-                "base_net_total": qbo_net,
-                "base_total_taxes_and_charges": qbo_tax,
-                "base_rounded_total": qbo_total,  # 🟢 Add this field
-                "outstanding_amount": 0,
-                "items": [  # 👈 This is the ONE placeholder item you wanted
-                    {
-                        "item_code": "TEMP-PLACEHOLDER",
-                        "qty": 1,
-                        "rate": 0,
-                        "amount": 0
-                    }
-                ],
-                "total": qbo_net,
-                "custom_qbo_sales_invoice_id": invoice_id,
-                "docstatus": 1
-            })
-            print("inserting invoice")
-            new_invoice.insert(ignore_permissions=True)
-            return new_invoice
-        except Exception as e:
-            print(f"Failed to make invoice due to: {str(e)}")
-            return None
-
+        return_inv = [None]
+        for inv in invoices:
+            print(f"Checking Sales Invoice {inv['name']} for Shipment Tracker...")
+            shipment_tracker = get_shipment_tracker_for_invoice(inv["name"])
+            print(f"Shipment Tracker for invoice {inv['name']}: {shipment_tracker}")
+            if shipment_tracker is not None:
+                return_inv[0] = inv["name"]
+                print(f"Found Shipment Tracker for invoice {inv['name']}, returning it.")
+            elif return_inv[0] is None:
+                return_inv[0] = inv["name"]
+                print(f"No Shipment Tracker found for invoice {inv['name']}, returning it because there is no inv to return.")
+            else:
+                cancel_and_delete_invoice(inv["name"], None)
+                print(f"Deleted Sales Invoice {inv['name']} because it had no Shipment Tracker. and a different one did")
+        if return_inv:
+            print(f"Returning Sales Invoice {return_inv[0]} with custom_qbo_sales_invoice_id = {invoice_id}\nReturn Inv is size {len(return_inv)}")
+            return frappe.get_doc("Sales Invoice", return_inv[0])
+        return None
 
 
 def get_customer_by_qbo_id(customer_id: str):
@@ -280,7 +384,6 @@ def fetch_invoice(invoice_id: str, realm_id: str) -> Optional[dict]:
     access_token = settings.accesstoken
 
     env_path = Path(frappe.get_app_path("qb_connector")).parent / "ts_qbo_client" / ".env"
-
 
     load_dotenv(dotenv_path=env_path)
 
@@ -315,15 +418,17 @@ def fetch_invoice(invoice_id: str, realm_id: str) -> Optional[dict]:
     except Exception:
         print("❌ Unexpected error fetching")
 
+def get_discount_percent_from_invoice(invoice: dict) -> Optional[float]:
+    for line in invoice.get("Line", []):
+        if line.get("DetailType") == "DiscountLineDetail":
+            discount_detail = line.get("DiscountLineDetail", {})
+            if discount_detail.get("PercentBased"):
+                return discount_detail.get("DiscountPercent")
+    return None
 def run_qbo_script(script_name: str, docname: str = None) -> str | None:
     """
     Runs a Node.js TypeScript script to sync a Payment or Invoice to Frappe from QBO.
     Returns True if successful, False otherwise.
-    Args:
-        script_name (str): The TypeScript script filename to run.
-        docname (str, optional): The document name or QBO ID to sync.
-    Returns:
-        bool: True if sync succeeded, False otherwise.
     """
     try:
         # Get the absolute path of the current file
@@ -341,14 +446,13 @@ def run_qbo_script(script_name: str, docname: str = None) -> str | None:
         if docname:
             print(f"📦 Running: npx ts-node {script_path} {docname}")  # Log the command
             process = subprocess.Popen(
-                ["npx", "ts-node", os.path.basename(script_path), docname],  # Only pass the script filename, not the full path
-                stdout=subprocess.PIPE,  # Capture standard output
-                stderr=subprocess.PIPE,  # Capture standard error
-                text=True,               # Return output as string, not bytes
-                cwd=script_dir           # Set working directory to script_dir
+                ["npx", "ts-node", os.path.basename(script_path), docname],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                cwd=script_dir
             )
         else:
-            # If no docname, just run the script
             print(f"📦 Running: npx ts-node {script_path}")
             process = subprocess.Popen(
                 ["npx", "ts-node", os.path.basename(script_path)],
@@ -358,54 +462,20 @@ def run_qbo_script(script_name: str, docname: str = None) -> str | None:
                 cwd=script_dir
             )
 
-        # Wait for the process to finish and get output
         stdout, stderr = process.communicate()
 
-        # If there is output on stdout, print and log it
         if stdout:
             print(f"📤 STDOUT:\n{stdout}")
             frappe.logger().info(f"[Payment Entry Sync Output] {stdout}")
 
-        # If there is output on stderr, print and log it as error
         if stderr:
             print(f"❗ STDERR:\n{stderr}")
             frappe.logger().error(f"[Payment Entry Sync Error] {stderr}")
 
-        # Return True if the process exited with code 0 (success), else False
         return process.returncode == 0
 
     except Exception as e:
-        # Catch any exception, print and log it
         print(f"❌ Exception during script execution: {e}")
         frappe.logger().error(f"❌ Exception in run_qbo_script: {str(e)}")
         return False
-
-
-def mark_qbo_sync_status(doctype: str, docname: str, status: str, payment_id: str = None):
-    """
-    Sets last_synced and sync_status after QBO update for Payment Entry or Invoice.
-    Also updates the custom_qbo_payment_id if provided.
-    Args:
-        doctype (str): The DocType name (should be 'Payment Entry' or 'Sales Invoice').
-        docname (str): The name of the document.
-        status (str): The sync status ('Synced' or 'Failed').
-        payment_id (str, optional): The QBO Payment ID if available.
-    """
-    try:
-        # Fetch the document from the database
-        doc = frappe.get_doc(doctype, docname)
-        # Set the sync status field
-        doc.db_set("custom_sync_status", status)
-        # If the sync failed, show a message to the user
-        if status != "Synced":
-            frappe.msgprint(f"Failed to Sync: {status}")
-        # If a payment_id is provided, update the custom_qbo_payment_id field
-        if payment_id:
-            doc.db_set("custom_qbo_payment_id", payment_id)
-        # Save the document to persist changes
-        doc.save()
-    except Exception as e:
-        # Log and print any error that occurs
-        frappe.logger().error(f"❌ Failed to update sync status for {doctype} {docname}: {str(e)}")
-        print(f"❌ Error in mark_qbo_sync_status: {e}")
 
