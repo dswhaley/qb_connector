@@ -13,9 +13,12 @@ def order_hooks(doc, method):
         doc: The document being processed (Sales Order or Sales Invoice).
         method: The event method triggering the hook.
     """
-    check_negotiated_items(doc, method)  # Update item prices if negotiated
-    apply_dynamic_discount(doc, method)  # Apply customer and quantity-based discounts
-    use_tax_status(doc, method)  # Set tax exemption status
+    if not doc.custom_built_from_webhook:
+        check_negotiated_items(doc, method)  # Update item prices if negotiated
+        apply_dynamic_discount(doc, method)  # Apply customer and quantity-based discounts
+        use_tax_status(doc, method)  # Set tax exemption status
+    else:
+        print("Skipping order_hooks for webhook-built document.")
 
 # ========== Tax Status Application ==========
 def use_tax_status(doc, method):
@@ -42,6 +45,58 @@ def use_tax_status(doc, method):
     except Exception as e:
         raise ValueError(f"❌ Doc does not have a valid customer link: {str(e)}")
 
+state_to_abbr = {
+    'alabama': 'al',
+    'alaska': 'ak',
+    'arizona': 'az',
+    'arkansas': 'ar',
+    'california': 'ca',
+    'colorado': 'co',
+    'connecticut': 'ct',
+    'delaware': 'de',
+    'florida': 'fl',
+    'georgia': 'ga',
+    'hawaii': 'hi',
+    'idaho': 'id',
+    'illinois': 'il',
+    'indiana': 'in',
+    'iowa': 'ia',
+    'kansas': 'ks',
+    'kentucky': 'ky',
+    'louisiana': 'la',
+    'maine': 'me',
+    'maryland': 'md',
+    'massachusetts': 'ma',
+    'michigan': 'mi',
+    'minnesota': 'mn',
+    'mississippi': 'ms',
+    'missouri': 'mo',
+    'montana': 'mt',
+    'nebraska': 'ne',
+    'nevada': 'nv',
+    'new hampshire': 'nh',
+    'new jersey': 'nj',
+    'new mexico': 'nm',
+    'new york': 'ny',
+    'north carolina': 'nc',
+    'north dakota': 'nd',
+    'ohio': 'oh',
+    'oklahoma': 'ok',
+    'oregon': 'or',
+    'pennsylvania': 'pa',
+    'rhode island': 'ri',
+    'south carolina': 'sc',
+    'south dakota': 'sd',
+    'tennessee': 'tn',
+    'texas': 'tx',
+    'utah': 'ut',
+    'vermont': 'vt',
+    'virginia': 'va',
+    'washington': 'wa',
+    'west virginia': 'wv',
+    'wisconsin': 'wi',
+    'wyoming': 'wy'
+}
 
 def get_state_tax_status(customer):
     """
@@ -53,8 +108,11 @@ def get_state_tax_status(customer):
         int or bool: The state tax status value (usually 0 or 1), or False if not found.
     """
     try:
-        state = customer.custom_state  # Get the state from the customer
+        state = customer.custom_state.lower()  # Get the state from the customer
         print(f"📂 State: {state}")
+        if len(state) > 2:
+            # Convert full state name to abbreviation if necessary
+            state = state_to_abbr.get(state)
     except Exception:
         raise ValueError("❌ Invalid billing address format (expected at least 3 parts: 'Street, City, State').")
 
@@ -62,11 +120,25 @@ def get_state_tax_status(customer):
 
     meta = frappe.get_meta("State Tax Information")
     # Check if the state exists as a field in State Tax Information
-    if any(df.fieldname == state for df in meta.fields):
+    if has_field("State Tax Information", state):
+        # Return the value of the state field
         return state_info.get(state)
     else:
+        frappe.msgprint(f"❌ State '{state}' not found in US State Tax Information DocType. \n(If this customer is outside the US, ignore this message.))")
         return False
+def has_field(doctype: str, fieldname: str) -> bool:
+    """
+    Checks if the specified DocType has a field with the given fieldname.
 
+    Args:
+        doctype (str): The name of the DocType.
+        fieldname (str): The fieldname to check.
+
+    Returns:
+        bool: True if the field exists in the DocType, False otherwise.
+    """
+    meta = frappe.get_meta(doctype)
+    return any(df.fieldname == fieldname for df in meta.fields)
 def check_negotiated_items(doc, method):
     """
     Checks if the customer is linked to a Camp or Other Organization and applies negotiated prices
