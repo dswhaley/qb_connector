@@ -21,42 +21,42 @@ def sync_sales_invoice_to_qbo(doc, method):
     """
     print(f"🚨 Hook triggered for Sales Invoice: {doc.name}")
     frappe.logger().info(f"🚨 Hook triggered for Sales Invoice: {doc.name}")
+    if not doc.custom_dont_sync:
+        try:
+            print("🔧 Starting QBO script execution...")
+            # Only sync if the 'don't sync' flag is not set
+            if not doc.custom_dont_sync:
+                # Run the TypeScript script to sync invoice to QBO
+                invoice_id = run_qbo_script("syncInvoiceToQbo.ts", doc.name)
 
-    try:
-        print("🔧 Starting QBO script execution...")
-        # Only sync if the 'don't sync' flag is not set
-        if not doc.custom_dont_sync:
-            # Run the TypeScript script to sync invoice to QBO
-            invoice_id = run_qbo_script("syncInvoiceToQbo.ts", doc.name)
+                # Determine sync status based on script result
+                if invoice_id >= 0:
+                    status = "Synced"
+                else:
+                    status = "Failed"
+                    invoice_id = None
 
-            # Determine sync status based on script result
-            if invoice_id >= 0:
-                status = "Synced"
+                print(f"📨 Enqueuing sync status update → {status}")
+                # Enqueue a background job to update sync status in ERPNext
+                if invoice_id:
+                    frappe.enqueue("qb_connector.qbo_hooks.mark_qbo_sync_status",
+                                doctype=doc.doctype,
+                                docname=doc.name,
+                                status=status,
+                                invoice_id=invoice_id)
+                else:
+                    frappe.enqueue("qb_connector.qbo_hooks.mark_qbo_sync_status",
+                        doctype=doc.doctype,
+                        docname=doc.name,
+                        status=status)
+
+                print(f"🧾 Enqueued Sales Invoice sync status update for {doc.name}")
+                frappe.logger().info(f"🧾 Enqueued Sales Invoice sync status update → {status}")
             else:
-                status = "Failed"
-                invoice_id = None
-
-            print(f"📨 Enqueuing sync status update → {status}")
-            # Enqueue a background job to update sync status in ERPNext
-            if invoice_id:
-                frappe.enqueue("qb_connector.qbo_hooks.mark_qbo_sync_status",
-                            doctype=doc.doctype,
-                            docname=doc.name,
-                            status=status,
-                            invoice_id=invoice_id)
-            else:
-                frappe.enqueue("qb_connector.qbo_hooks.mark_qbo_sync_status",
-                    doctype=doc.doctype,
-                    docname=doc.name,
-                    status=status)
-
-            print(f"🧾 Enqueued Sales Invoice sync status update for {doc.name}")
-            frappe.logger().info(f"🧾 Enqueued Sales Invoice sync status update → {status}")
-        else:
-            print("Not syncing due to don't sync flag")
-    except Exception as e:
-        print(f"❌ Error in sync_sales_invoice_to_qbo: {e}")
-        frappe.logger().error(f"❌ Sales Invoice sync failed: {str(e)}")
+                print("Not syncing due to don't sync flag")
+        except Exception as e:
+            print(f"❌ Error in sync_sales_invoice_to_qbo: {e}")
+            frappe.logger().error(f"❌ Sales Invoice sync failed: {str(e)}")
 
 
 
@@ -145,50 +145,3 @@ def retry_failed_invoice_syncs():
 
 
 
-def use_tax_status(doc, method):
-    """
-    Sets the 'exempt_from_sales_tax' flag on the document based on the customer's tax status
-    and state tax information. Used to determine if sales tax should be applied.
-    Args:
-        doc: The Sales Invoice document being processed.
-        method: The event method triggering the hook.
-    """
-    try:
-        # Fetch the linked customer document
-        customer = frappe.get_doc("Customer", doc.customer)
-    except Exception:
-        raise ValueError("❌ Doc does not have a valid customer link.")
-
-    print(f"Tax Status: {customer.custom_tax_status}\n State Status: {get_state_tax_status(customer)}")
-    # Exempt from sales tax if customer is marked 'Exempt' or state tax status is 0
-    if customer.custom_tax_status == "Exempt" or get_state_tax_status(customer) == 0:
-        doc.exempt_from_sales_tax = 1
-    else:
-        doc.exempt_from_sales_tax = 0
-
-def get_state_tax_status(customer):
-    """
-    Looks up the state tax status for a customer based on their state field.
-    Returns the value from the State Tax Information DocType if found.
-    Args:
-        customer: The Customer document.
-    Returns:
-        int: The state tax status value (usually 0 or 1).
-    Raises:
-        ValueError: If the state field is not found or invalid.
-    """
-    try:
-        state = customer.custom_state  # Get the state from the customer
-        print(f"📂 State: {state}")
-    except Exception:
-        raise ValueError("❌ Invalid billing address format (expected at least 3 parts: 'Street, City, State').")
-
-    state_info = frappe.get_doc("State Tax Information", "State Tax Information")
-
-    meta = frappe.get_meta("State Tax Information")
-    # Check if the state exists as a field in State Tax Information
-    if any(df.fieldname == state for df in meta.fields):
-        return state_info.get(state)
-    else:
-        raise ValueError(f"❌ Invalid State: field '{state}' not found in State Tax Information.")
-    
