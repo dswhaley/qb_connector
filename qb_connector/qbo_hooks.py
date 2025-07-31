@@ -88,7 +88,7 @@ def mark_qbo_sync_status(doctype: str, docname: str, status: str, invoice_id: st
         if invoice_id:
             doc.db_set("custom_qbo_sales_invoice_id", invoice_id)
         # Save the document with the updated fields
-        doc.save()
+        frappe.db.commit()
     except Exception as e:
         frappe.logger().error(f"❌ Failed to update sync status for {doctype} {docname}: {str(e)}")
         print(f"❌ Error in mark_qbo_sync_status: {e}")
