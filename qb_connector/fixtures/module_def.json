@@ -4,14 +4,14 @@
   "custom": 0,
   "docstatus": 0,
   "doctype": "Module Def",
-  "modified": "2025-07-25 14:07:42.363367",
+  "modified": "2025-07-29 10:48:08.003680",
   "module_name": "Order Tracker",
   "name": "Order Tracker",
   "package": null,
   "restrict_to_domain": null
  },
  {
-  "app_name": "erpnext",
+  "app_name": "qb_connector",
   "custom": 0,
   "docstatus": 0,
   "doctype": "Module Def",
