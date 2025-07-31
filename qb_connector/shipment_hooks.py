@@ -99,23 +99,19 @@ def link_payment_to_tracker(doc, method):
                 frappe.msgprint(f"Error fetching Sales Invoice {invoice}: {e}")
                 continue
 
-            if not invoice_doc.items or not invoice_doc.items[0].sales_order:
-                continue
-
-            sales_order = invoice_doc.items[0].sales_order
-
-            tracker = frappe.get_value("Shipment Tracker", {"sales_order": sales_order}, "name")
-            if not tracker:
+            # Look for a Shipment Tracker that directly references this Sales Invoice
+            tracker_name = frappe.get_value("Shipment Tracker", {"sales_invoice": invoice}, "name")
+            if not tracker_name:
+                frappe.logger().debug(f"No Shipment Tracker found for Sales Invoice {invoice}")
                 continue
 
             try:
-                st = frappe.get_doc("Shipment Tracker", tracker)
-                st.payment_entry = doc.name
-                st.shipment_status = "Payment Received"
-                st.save()  # Save changes to Shipment Tracker
+                tracker_doc = frappe.get_doc("Shipment Tracker", tracker_name)
+                tracker_doc.payment_entry = doc.name
+                tracker_doc.shipment_status = "Payment Received"
+                tracker_doc.save()  # Save changes to Shipment Tracker
                 frappe.db.commit()  # Commit the transaction
-                frappe.logger().debug(f"Shipment Tracker {tracker} updated with payment_entry {doc.name} and status 'Payment Received'")
+                frappe.logger().debug(f"Shipment Tracker {tracker_name} updated with payment_entry {doc.name} and status 'Payment Received'")
             except Exception as e:
-                frappe.logger().error(f"Error updating Shipment Tracker {tracker}: {e}")
-                frappe.msgprint(f"Error updating Shipment Tracker {tracker}: {e}")
-
+                frappe.logger().error(f"Error updating Shipment Tracker {tracker_name}: {e}")
+                frappe.msgprint(f"Error updating Shipment Tracker {tracker_name}: {e}")
