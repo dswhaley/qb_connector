@@ -38,6 +38,7 @@ interface FrappePaymentEntryPayload {
   custom_qbo_payment_id: string;
   custom_sync_status?: string;
   custom_dont_sync_with_qbo?: number;
+  
 }
 
 // Type for Frappe document creation response
