@@ -105,13 +105,18 @@ export async function createCustomerInQbo(customerName: string): Promise<frappeR
   console.warn(`State ${customer.custom_state}`);
   console.warn(`Zip Code: ${customer.custom_zip_code}`);
   console.warn(`Country:  ${customer.custom_country}`)
+
+  let country = customer.custom_country?.trim().toUpperCase();
+  if (country === "UNITED STATES" || country === "USA" || country === "US" || country === "US OF A" || country === "UNITED STATES OF AMERICA") {
+    country = "USA"; // Normalize US variants to "USA"
+  }
   if (isFilled(customer.custom_street_address_line_1) && isFilled(customer.custom_city) && isFilled(customer.custom_state) && isFilled(customer.custom_zip_code) && isFilled(customer.custom_country)) {
     const Line1 = customer.custom_street_address_line_1;
     const Line2 = customer.custom_street_address_line_2;
     const City = customer.custom_city;
     const State = customer.custom_state;
     const PostalCode = customer.custom_zip_code;
-    const Country = customer.custom_country;
+    const Country = country;
     qboCustomer.BillAddr = {
       Line1,
       Line2,
