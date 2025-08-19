@@ -79,7 +79,7 @@ app.post('/api/handle-customer-create', async (req: Request, res: Response) => {
 
 // Start Express server
 app.listen(port, () => {
-  console.log(`QBO integration server running at http://localhost:${port}`);
+  console.log(`QBO integration server running at http://0.0.0.0:${port}`);
 });
 
 
